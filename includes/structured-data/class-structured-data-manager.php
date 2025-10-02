@@ -304,7 +304,6 @@ class Structured_Data_Manager {
         $organization     = $this->settings->get_organization_settings();
         $organization_url = $organization['url'] ?: home_url( '/' );
         $organization_id  = trailingslashit( $organization_url ) . '#organization';
-        $article_id       = $permalink . '#article';
         $webpage_id       = $permalink . '#webpage';
         $breadcrumb_id    = $permalink . '#breadcrumb';
         $image_id         = $permalink . '#primaryimage';
@@ -353,51 +352,60 @@ class Structured_Data_Manager {
             $graph[] = $breadcrumb;
         }
 
-        $article = array(
-            '@type'            => $this->get_article_type( $post ),
-            '@id'              => $article_id,
-            'headline'         => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
-            'mainEntityOfPage' => array( '@id' => $webpage_id ),
-            'isPartOf'         => array( '@id' => $organization_id ),
-            'hasPart'          => array( array( '@id' => $item_list_id ) ),
-        );
+        if ( 'product' === $post->post_type ) {
+            $product_node = $this->build_product_node( $post, $values, $webpage_id, $organization_id, $item_list_id, $image_id, $permalink );
 
-        if ( '' !== $values['description'] ) {
-            $article['description'] = $values['description'];
-        }
-
-        if ( '' !== $values['image'] ) {
-            $article['image'] = array( '@id' => $image_id );
-        }
-
-        $published = get_post_time( DATE_W3C, true, $post );
-        if ( $published ) {
-            $article['datePublished'] = $published;
-        }
-
-        $modified = get_post_modified_time( DATE_W3C, true, $post );
-        if ( $modified ) {
-            $article['dateModified'] = $modified;
-        }
-
-        $author_name = get_the_author_meta( 'display_name', $post->post_author );
-        if ( $author_name ) {
-            $author = array(
-                '@type' => 'Person',
-                'name'  => $author_name,
+            if ( ! empty( $product_node ) ) {
+                $graph[] = $product_node;
+            }
+        } else {
+            $article_id = $permalink . '#article';
+            $article    = array(
+                '@type'            => $this->get_article_type( $post ),
+                '@id'              => $article_id,
+                'headline'         => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
+                'mainEntityOfPage' => array( '@id' => $webpage_id ),
+                'isPartOf'         => array( '@id' => $organization_id ),
+                'hasPart'          => array( array( '@id' => $item_list_id ) ),
             );
 
-            $author_url = get_author_posts_url( $post->post_author );
-            if ( $author_url ) {
-                $author['url'] = $author_url;
+            if ( '' !== $values['description'] ) {
+                $article['description'] = $values['description'];
             }
 
-            $article['author'] = $author;
+            if ( '' !== $values['image'] ) {
+                $article['image'] = array( '@id' => $image_id );
+            }
+
+            $published = get_post_time( DATE_W3C, true, $post );
+            if ( $published ) {
+                $article['datePublished'] = $published;
+            }
+
+            $modified = get_post_modified_time( DATE_W3C, true, $post );
+            if ( $modified ) {
+                $article['dateModified'] = $modified;
+            }
+
+            $author_name = get_the_author_meta( 'display_name', $post->post_author );
+            if ( $author_name ) {
+                $author = array(
+                    '@type' => 'Person',
+                    'name'  => $author_name,
+                );
+
+                $author_url = get_author_posts_url( $post->post_author );
+                if ( $author_url ) {
+                    $author['url'] = $author_url;
+                }
+
+                $article['author'] = $author;
+            }
+
+            $article['publisher'] = array( '@id' => $organization_id );
+
+            $graph[] = $article;
         }
-
-        $article['publisher'] = array( '@id' => $organization_id );
-
-        $graph[] = $article;
 
         if ( '' !== $values['image'] ) {
             $graph[] = array(
@@ -414,6 +422,111 @@ class Structured_Data_Manager {
             '@context' => 'https://schema.org',
             '@graph'   => $graph,
         );
+    }
+
+    /**
+     * Build the Product schema node for WooCommerce products.
+     *
+     * @param WP_Post             $post            Product post object.
+     * @param array<string,string> $values         Resolved schema values.
+     * @param string              $webpage_id     WebPage node ID.
+     * @param string              $organization_id Organization node ID.
+     * @param string              $item_list_id   ItemList node ID.
+     * @param string              $image_id       Image node ID.
+     * @param string              $permalink      Product permalink.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_product_node( WP_Post $post, array $values, string $webpage_id, string $organization_id, string $item_list_id, string $image_id, string $permalink ): array {
+        $product_id = $permalink . '#product';
+
+        $product_node = array(
+            '@type'            => 'Product',
+            '@id'              => $product_id,
+            'name'             => wp_strip_all_tags( get_the_title( $post ) ),
+            'mainEntityOfPage' => array( '@id' => $webpage_id ),
+            'isPartOf'         => array( '@id' => $organization_id ),
+            'hasPart'          => array( array( '@id' => $item_list_id ) ),
+        );
+
+        if ( '' !== $values['description'] ) {
+            $product_node['description'] = $values['description'];
+        }
+
+        if ( '' !== $values['image'] ) {
+            $product_node['image'] = array( '@id' => $image_id );
+        }
+
+        if ( function_exists( 'wc_get_product' ) ) {
+            $product = wc_get_product( $post->ID );
+
+            if ( $product instanceof \WC_Product ) {
+                $sku = $product->get_sku();
+                if ( $sku ) {
+                    $product_node['sku'] = $sku;
+                }
+
+                /**
+                 * Filter the attribute used to determine the product brand for structured data output.
+                 *
+                 * @param string      $attribute_slug Default attribute slug.
+                 * @param \WC_Product $product        Current product instance.
+                 */
+                $brand_attribute = apply_filters( 'working_with_toc_structured_data_brand_attribute', 'pa_brand', $product );
+                if ( is_string( $brand_attribute ) && '' !== trim( $brand_attribute ) ) {
+                    $brand = $product->get_attribute( $brand_attribute );
+                    if ( is_string( $brand ) && '' !== trim( $brand ) ) {
+                        $product_node['brand'] = array(
+                            '@type' => 'Brand',
+                            'name'  => wp_strip_all_tags( $brand ),
+                        );
+                    }
+                }
+
+                if ( empty( $product_node['description'] ) ) {
+                    $short_description = $product->get_short_description();
+                    if ( is_string( $short_description ) && '' !== trim( $short_description ) ) {
+                        $product_node['description'] = wp_strip_all_tags( $short_description );
+                    }
+                }
+
+                $price = $product->get_price();
+                if ( '' !== $price ) {
+                    $price_value = (string) $price;
+                    if ( is_numeric( $price ) ) {
+                        $decimals    = function_exists( 'wc_get_price_decimals' ) ? wc_get_price_decimals() : 2;
+                        $price_value = number_format( (float) $price, $decimals, '.', '' );
+                    }
+
+                    $currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : get_option( 'woocommerce_currency', 'USD' );
+                    if ( '' === $currency ) {
+                        $currency = 'USD';
+                    }
+
+                    $offer = array(
+                        '@type'         => 'Offer',
+                        'price'         => $price_value,
+                        'priceCurrency' => $currency,
+                        'url'           => $permalink,
+                    );
+
+                    $availability_map = array(
+                        'instock'     => 'https://schema.org/InStock',
+                        'outofstock'  => 'https://schema.org/OutOfStock',
+                        'onbackorder' => 'https://schema.org/BackOrder',
+                    );
+
+                    $stock_status = $product->get_stock_status();
+                    if ( isset( $availability_map[ $stock_status ] ) ) {
+                        $offer['availability'] = $availability_map[ $stock_status ];
+                    }
+
+                    $product_node['offers'] = $offer;
+                }
+            }
+        }
+
+        return $product_node;
     }
 
     /**
@@ -583,10 +696,6 @@ class Structured_Data_Manager {
      * Determine the schema.org type for the main content.
      */
     protected function get_article_type( WP_Post $post ): string {
-        if ( 'product' === $post->post_type ) {
-            return 'Product';
-        }
-
         if ( 'page' === $post->post_type ) {
             return 'WebPage';
         }
