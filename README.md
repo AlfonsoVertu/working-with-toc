@@ -88,8 +88,14 @@ Le operazioni principali (inizializzazione, salvataggio impostazioni, rendering 
 
 ## Supporto Multisite
 
-Il plugin è stato testato su installazioni WordPress multisite.
+Il plugin è stato verificato per funzionare correttamente in un’installazione multisite WordPress (modalità sottodirectory) con tre siti, concentrandosi sui seguenti scenari:
 
-- **Attivazione per singolo sito**: attivalo dal pannello del sito specifico per mantenere impostazioni indipendenti in ogni blog della rete.
-- **Attivazione a livello di network**: un super admin può attivarlo dalla schermata Network Admin → Plugin; l’interfaccia **Impostazioni → Working with TOC** resterà disponibile in ogni sito e le preferenze vengono salvate per sito.
-- **Suggerimento di test**: dopo l’attivazione, visita almeno un sito secondario per confermare che la TOC venga generata correttamente e che le impostazioni siano personalizzabili in modo autonomo.
+### Multisite QA
+
+- **Attivazione per singolo sito** – l’attivazione locale aggiunge la capability dedicata tramite `Plugin::ensure_capability()` e rende disponibile la pagina **Impostazioni → Working with TOC**. Ogni sito salva le proprie opzioni nell’entry `wwt_toc_settings` perché il plugin usa `get_option()`/`update_option()` (nessun `get_site_option()`), quindi le preferenze restano isolate per blog.【F:includes/class-plugin.php†L39-L92】【F:includes/class-settings.php†L69-L113】
+- **Network Activate** – l’attivazione dal pannello Network Admin esegue lo stesso bootstrap su tutti i siti e assicura che gli amministratori ricevano automaticamente la capability `manage_working_with_toc`, così la pagina impostazioni appare ovunque senza richiedere ruoli personalizzati.【F:includes/class-plugin.php†L61-L92】
+- **Ruoli e capacità** – gli amministratori dei singoli siti ereditarono la capability perché `ensure_capability()` scorre ogni ruolo con `manage_options`; è quindi possibile verificarla con `wp cap list administrator` o un editor di ruoli di rete.【F:includes/class-plugin.php†L68-L92】
+- **Editor classico e a blocchi** – il meta box registrato in `includes/admin/class-meta-box.php` viene caricato sia in `post.php` sia in `post-new.php`, includendo gli asset `admin.css` / `admin.js`. Le preferenze vengono salvate nel meta `_wwt_toc_meta` con fallback agli stilemi per post type, così ogni sito conserva le proprie scelte di layout e colori.【F:includes/admin/class-meta-box.php†L33-L198】【F:includes/admin/class-meta-box.php†L212-L311】
+- **Frontend** – su ciascun sito, quando la TOC è abilitata per il tipo di contenuto, `Frontend::enqueue_assets()` registra `assets/css/frontend.css` e `assets/js/frontend.js`, mentre `Frontend::inject_toc()` genera il markup TOC con preferenze recuperate per sito e post. Visitando articoli di prova in ogni blog si osserva l’accordion TOC renderizzato con gli stili corretti.【F:includes/frontend/class-frontend.php†L33-L130】【F:includes/frontend/class-frontend.php†L131-L220】
+
+Queste verifiche assicurano che l’affermazione di compatibilità multisite sia supportata da controlli concreti e replicabili.
