@@ -16,7 +16,7 @@ It stores its configuration using standard WordPress options and post meta, with
 = Key Features =
 * Sticky accordion TOC fixed to the bottom of the viewport with touch-friendly controls.
 * Automatic heading anchor generation (`<h2>`–`<h6>`) that keeps TOC links synchronized with on-page headings.
-* Admin page with toggles to enable the TOC and Schema.org `TableOfContents` data by post type.
+* Admin page with toggles to enable the TOC and Schema.org `ItemList` data by post type.
 * JSON-LD output compatible with Rank Math and Yoast SEO schema graphs, avoiding duplicate markup.
 * Conditional logging that respects the `WP_DEBUG` flag for safe troubleshooting in development environments.
 
@@ -39,7 +39,7 @@ add_filter( 'working_with_toc_admin_capability', function ( $capability ) {
 Posts, pages, and WooCommerce products can generate the table of contents and structured data.
 
 = Does the plugin add schema markup? =
-Yes. The plugin outputs a Schema.org `TableOfContents` node that integrates with Rank Math or Yoast SEO graphs.
+Yes. The plugin outputs a Schema.org `ItemList` node that integrates with Rank Math or Yoast SEO graphs.
 
 = What are the minimum requirements? =
 Working with TOC requires WordPress 6.0 or higher and PHP 7.4 or higher, and it is released under the GPLv2 or later license.

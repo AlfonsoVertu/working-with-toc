@@ -262,17 +262,21 @@ class Structured_Data_Manager {
             'name'     => wp_strip_all_tags( get_the_title( $post ) ),
             'url'      => get_permalink( $post ),
             'hasPart'  => array(
-                '@type' => 'TableOfContents',
-                'name'  => $toc_title,
-                'about' => array(),
+                '@type'           => 'ItemList',
+                'name'            => $toc_title,
+                'itemListElement' => array(),
             ),
         );
 
-        foreach ( $headings as $heading ) {
-            $schema['hasPart']['about'][] = array(
-                '@type' => 'Thing',
-                'name'  => $heading['title'],
-                'url'   => $heading['url'],
+        foreach ( $headings as $index => $heading ) {
+            $schema['hasPart']['itemListElement'][] = array(
+                '@type'    => 'ListItem',
+                'position' => $index + 1,
+                'item'     => array(
+                    '@type' => 'Thing',
+                    'name'  => $heading['title'],
+                    'url'   => $heading['url'],
+                ),
             );
         }
 

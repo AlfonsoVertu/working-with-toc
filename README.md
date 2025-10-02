@@ -20,7 +20,7 @@ La configurazione viene salvata attraverso le normali opzioni e i meta di WordPr
 - Accordion TOC fisso nella parte inferiore dello schermo con design moderno e supporto touch.
 - Generazione automatica degli anchor ID sui titoli `<h2>-<h6>` e sincronizzazione con gli URL della TOC.
 - Pannello di amministrazione personalizzato con interruttori per attivare TOC e dati strutturati per articoli, pagine e prodotti WooCommerce.
-- Output JSON-LD dedicato al tipo `TableOfContents` per articoli, pagine e prodotti, integrato nel grafo schema di Yoast SEO e riconosciuto da Rank Math.
+- Output JSON-LD compatibile basato su `ItemList` per articoli, pagine e prodotti, integrato nel grafo schema di Yoast SEO e riconosciuto da Rank Math.
 - Logging condizionato sul flag `WP_DEBUG` per agevolare il debug senza inquinare l'ambiente di produzione.
 
 ## Struttura del plugin
@@ -74,7 +74,7 @@ La TOC viene generata e mostrata in un accordion fissato al bordo inferiore dell
 
 - **Rank Math**: il plugin si registra tra i TOC supportati, evitando l’avviso “Nessun plugin TOC installato”.
 - **Yoast SEO**: i dati strutturati vengono aggiunti al grafo esistente tramite il filtro `wpseo_schema_graph` senza conflitti.
-- **Schema.org**: viene generato un nodo `TableOfContents` con riferimenti diretti alle intestazioni del contenuto, con URL coerenti con l’anchor ID generato nel markup.
+- **Schema.org**: viene generato un nodo `ItemList` con riferimenti diretti alle intestazioni del contenuto, con URL coerenti con l’anchor ID generato nel markup.
 
 ## Log e debug
 
