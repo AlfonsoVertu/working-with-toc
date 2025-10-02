@@ -199,7 +199,7 @@ class Structured_Data_Manager {
      *
      * @return array<int,string> Parent node IDs that were detected.
      */
-    protected function add_item_list_reference_to_schema_nodes( array &$nodes, string $item_list_id, array $types = array( 'WebPage', 'Article', 'Product' ) ): array {
+    protected function add_item_list_reference_to_schema_nodes( array &$nodes, string $item_list_id, array $types = array( 'WebPage', 'Article' ) ): array {
         $parent_ids = array();
 
         foreach ( $nodes as &$node ) {
@@ -584,7 +584,7 @@ class Structured_Data_Manager {
         }
 
         if ( 'product' === $post->post_type ) {
-            $product_node = $this->build_product_node( $post, $values, $webpage_id, $website_id, $item_list_id, $image_id, $permalink );
+            $product_node = $this->build_product_node( $post, $values, $webpage_id, $image_id, $permalink );
 
             if ( ! empty( $product_node ) ) {
                 $graph[] = $product_node;
@@ -661,14 +661,12 @@ class Structured_Data_Manager {
      * @param WP_Post             $post            Product post object.
      * @param array<string,string> $values         Resolved schema values.
      * @param string              $webpage_id     WebPage node ID.
-     * @param string              $website_id     WebSite node ID.
-     * @param string              $item_list_id   ItemList node ID.
      * @param string              $image_id       Image node ID.
      * @param string              $permalink      Product permalink.
      *
      * @return array<string,mixed>
      */
-    protected function build_product_node( WP_Post $post, array $values, string $webpage_id, string $website_id, string $item_list_id, string $image_id, string $permalink ): array {
+    protected function build_product_node( WP_Post $post, array $values, string $webpage_id, string $image_id, string $permalink ): array {
         $product_id = $permalink . '#product';
 
         $product_node = array(
@@ -676,32 +674,7 @@ class Structured_Data_Manager {
             '@id'              => $product_id,
             'name'             => wp_strip_all_tags( get_the_title( $post ) ),
             'mainEntityOfPage' => array( '@id' => $webpage_id ),
-            'isPartOf'         => array( '@id' => $website_id ),
         );
-
-        $has_part_entry = array( '@id' => $item_list_id );
-
-        if ( isset( $product_node['hasPart'] ) && is_array( $product_node['hasPart'] ) ) {
-            $has_part = $product_node['hasPart'];
-        } elseif ( isset( $product_node['hasPart'] ) ) {
-            $has_part = array( $product_node['hasPart'] );
-        } else {
-            $has_part = array();
-        }
-
-        $already_linked = false;
-        foreach ( $has_part as $part ) {
-            if ( is_array( $part ) && isset( $part['@id'] ) && $part['@id'] === $item_list_id ) {
-                $already_linked = true;
-                break;
-            }
-        }
-
-        if ( ! $already_linked ) {
-            $has_part[] = $has_part_entry;
-        }
-
-        $product_node['hasPart'] = $has_part;
 
         if ( '' !== $values['description'] ) {
             $product_node['description'] = $values['description'];
