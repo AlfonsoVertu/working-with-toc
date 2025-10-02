@@ -25,12 +25,20 @@ class Admin_Page {
     protected $settings;
 
     /**
+     * Capability required to access the admin page.
+     *
+     * @var string
+     */
+    protected $capability;
+
+    /**
      * Constructor.
      *
      * @param Settings $settings Settings manager.
      */
     public function __construct( Settings $settings ) {
         $this->settings = $settings;
+        $this->capability = apply_filters( 'working_with_toc_admin_capability', 'manage_options' );
     }
 
     /**
@@ -40,7 +48,7 @@ class Admin_Page {
         add_menu_page(
             __( 'Working with TOC', 'working-with-toc' ),
             __( 'Working with TOC', 'working-with-toc' ),
-            'manage_options',
+            $this->capability,
             'working-with-toc',
             array( $this, 'render_page' ),
             'dashicons-list-view'
@@ -84,7 +92,7 @@ class Admin_Page {
      * Render settings page markup.
      */
     public function render_page(): void {
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( $this->capability ) ) {
             return;
         }
 
