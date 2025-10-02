@@ -1,0 +1,31 @@
+# WordPress plugin .gitignore
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Composer dependencies
+/vendor/
+/composer.lock
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# WordPress specific
+wp-config.php
+/wp-content/uploads/
+
+# Env files
+.env
+.env.*
