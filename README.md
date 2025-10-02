@@ -53,6 +53,18 @@ working-with-toc/
 
 Nel menu di amministrazione viene aggiunta una pagina “Working with TOC” con tre card dedicate ai diversi tipi di contenuto. Ogni card include uno switch moderno per attivare o disattivare la TOC e i relativi dati strutturati. Il layout utilizza gradienti, ombre morbide e micro-animazioni per un aspetto premium.
 
+### Permessi personalizzati per la pagina impostazioni
+
+Il plugin utilizza la capability `manage_options` per impostazione predefinita, ma è possibile modificarla tramite il filtro `working_with_toc_admin_capability`. Ad esempio, per concedere l’accesso anche agli editor è sufficiente aggiungere al proprio tema o plugin:
+
+```php
+add_filter( 'working_with_toc_admin_capability', function ( $capability ) {
+    return 'edit_others_posts';
+} );
+```
+
+In questo modo la pagina **Working with TOC** sarà visibile a tutti gli utenti con la capability `edit_others_posts` (inclusi gli editor) mantenendo il comportamento originale per gli altri ruoli.
+
 ## Funzionalità frontend
 
 La TOC viene generata e mostrata in un accordion fissato al bordo inferiore della finestra. Gli utenti possono aprirla o chiuderla rapidamente; quando è aperta, il contenuto scorre all'interno di un pannello a scomparsa con evidenziazione dinamica della sezione in lettura grazie a `IntersectionObserver`.
