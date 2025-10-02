@@ -37,7 +37,7 @@ class Structured_Data_Manager {
     /**
      * Cached schema for the current request.
      *
-     * @var array<string,mixed>|null
+     * @var array{item_list?:array<string,mixed>,fallback_graph?:array<string,mixed>}|null
      */
     protected $cached_schema = null;
 
@@ -77,15 +77,19 @@ class Structured_Data_Manager {
             return;
         }
 
-        if ( defined( 'RANK_MATH_VERSION' ) ) {
-            Logger::log( 'Skipping direct structured data output because Rank Math integration is active for post ID ' . $post->ID );
+        if ( $this->is_seo_plugin_active() ) {
+            Logger::log( 'Skipping direct structured data output because an SEO integration is active for post ID ' . $post->ID );
 
             return;
         }
 
-        Logger::log( 'Rendering structured data for post ID ' . $post->ID );
+        if ( empty( $schema['fallback_graph'] ) ) {
+            return;
+        }
 
-        echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        Logger::log( 'Rendering fallback structured data for post ID ' . $post->ID );
+
+        echo '<script type="application/ld+json">' . wp_json_encode( $schema['fallback_graph'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -106,11 +110,11 @@ class Structured_Data_Manager {
         }
 
         $schema = $this->get_schema_for_post( $post );
-        if ( empty( $schema ) ) {
+        if ( empty( $schema['item_list'] ) ) {
             return $graph;
         }
 
-        $graph[] = $schema;
+        $graph[] = $schema['item_list'];
         Logger::log( 'Merged TOC schema into Yoast graph for post ID ' . $post->ID );
 
         return $graph;
@@ -135,7 +139,7 @@ class Structured_Data_Manager {
         }
 
         $schema = $this->get_schema_for_post( $post );
-        if ( empty( $schema ) ) {
+        if ( empty( $schema['item_list'] ) ) {
             return is_array( $data ) ? $data : array();
         }
 
@@ -143,7 +147,7 @@ class Structured_Data_Manager {
             $data = array();
         }
 
-        $data['wwtToc'] = $schema;
+        $data['wwtToc'] = $schema['item_list'];
 
         Logger::log( 'Merged TOC schema into Rank Math graph for post ID ' . $post->ID );
 
@@ -176,10 +180,20 @@ class Structured_Data_Manager {
             return $this->cached_schema;
         }
 
-        $schema = $this->build_schema( $post, $headings, $preferences );
+        $item_list = $this->build_item_list_schema( $post, $headings, $preferences );
 
-        if ( empty( $schema ) ) {
+        if ( empty( $item_list ) ) {
             return $this->cached_schema;
+        }
+
+        $schema = array(
+            'item_list' => $item_list,
+        );
+
+        $fallback_graph = $this->build_fallback_graph( $post, $item_list, $this->resolve_schema_values( $post ) );
+
+        if ( ! empty( $fallback_graph ) ) {
+            $schema['fallback_graph'] = $fallback_graph;
         }
 
         $this->cached_schema = $schema;
@@ -235,51 +249,311 @@ class Structured_Data_Manager {
     }
 
     /**
-     * Build schema array for JSON-LD.
+     * Build the ItemList node describing the TOC.
      *
      * @param WP_Post             $post         Post object.
-     * @param array               $headings     Headings with titles & URLs.
+     * @param array<int,array{title:string,url:string}> $headings Heading data.
      * @param array<string,mixed> $preferences  Post-specific preferences.
      *
      * @return array<string,mixed>
      */
-    protected function build_schema( WP_Post $post, array $headings, array $preferences ): array {
-        $type = 'Article';
-        if ( 'product' === $post->post_type ) {
-            $type = 'Product';
-        } elseif ( 'page' === $post->post_type ) {
-            $type = 'WebPage';
-        }
-
+    protected function build_item_list_schema( WP_Post $post, array $headings, array $preferences ): array {
         $toc_title = isset( $preferences['title'] ) && '' !== trim( $preferences['title'] )
             ? $preferences['title']
             : __( 'Table of contents', 'working-with-toc' );
 
-        $schema = array(
-            '@context' => 'https://schema.org',
-            '@type'    => $type,
-            '@id'      => get_permalink( $post ) . '#main',
-            'name'     => wp_strip_all_tags( get_the_title( $post ) ),
-            'url'      => get_permalink( $post ),
-            'hasPart'  => array(
-                '@type'           => 'ItemList',
-                'name'            => $toc_title,
-                'itemListElement' => array(),
-            ),
+        $item_list = array(
+            '@type'           => 'ItemList',
+            '@id'             => get_permalink( $post ) . '#table-of-contents',
+            'name'            => $toc_title,
+            'itemListElement' => array(),
         );
 
         foreach ( $headings as $index => $heading ) {
-            $schema['hasPart']['itemListElement'][] = array(
+            $item_list['itemListElement'][] = array(
                 '@type'    => 'ListItem',
                 'position' => $index + 1,
                 'item'     => array(
                     '@type' => 'Thing',
+                    '@id'   => $heading['url'],
                     'name'  => $heading['title'],
                     'url'   => $heading['url'],
                 ),
             );
         }
 
-        return $schema;
+        return $item_list;
+    }
+
+    /**
+     * Build the fallback structured data graph when no SEO plugin is active.
+     *
+     * @param WP_Post             $post        Post object.
+     * @param array<string,mixed> $item_list   ItemList node.
+     * @param array<string,string> $values     Resolved schema values.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_fallback_graph( WP_Post $post, array $item_list, array $values ): array {
+        $permalink = get_permalink( $post );
+
+        if ( ! $permalink ) {
+            return array();
+        }
+
+        $organization     = $this->settings->get_organization_settings();
+        $organization_url = $organization['url'] ?: home_url( '/' );
+        $organization_id  = trailingslashit( $organization_url ) . '#organization';
+        $article_id       = $permalink . '#article';
+        $webpage_id       = $permalink . '#webpage';
+        $breadcrumb_id    = $permalink . '#breadcrumb';
+        $image_id         = $permalink . '#primaryimage';
+        $item_list_id     = $item_list['@id'] ?? ( $permalink . '#table-of-contents' );
+
+        $graph = array();
+
+        $organization_node = array(
+            '@type' => 'Organization',
+            '@id'   => $organization_id,
+            'name'  => $organization['name'] ?: get_bloginfo( 'name' ),
+            'url'   => $organization_url,
+        );
+
+        if ( ! empty( $organization['logo'] ) ) {
+            $organization_node['logo'] = array(
+                '@type' => 'ImageObject',
+                'url'   => $organization['logo'],
+            );
+        }
+
+        $graph[] = $organization_node;
+
+        $breadcrumb = $this->build_breadcrumb_list( $post, $breadcrumb_id );
+
+        $webpage = array(
+            '@type'      => 'WebPage',
+            '@id'        => $webpage_id,
+            'url'        => $permalink,
+            'name'       => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
+            'isPartOf'   => array( '@id' => $organization_id ),
+            'breadcrumb' => array( '@id' => $breadcrumb_id ),
+        );
+
+        if ( '' !== $values['description'] ) {
+            $webpage['description'] = $values['description'];
+        }
+
+        if ( '' !== $values['image'] ) {
+            $webpage['primaryImageOfPage'] = array( '@id' => $image_id );
+        }
+
+        $graph[] = $webpage;
+
+        if ( ! empty( $breadcrumb['itemListElement'] ) ) {
+            $graph[] = $breadcrumb;
+        }
+
+        $article = array(
+            '@type'            => $this->get_article_type( $post ),
+            '@id'              => $article_id,
+            'headline'         => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
+            'mainEntityOfPage' => array( '@id' => $webpage_id ),
+            'isPartOf'         => array( '@id' => $organization_id ),
+            'hasPart'          => array( array( '@id' => $item_list_id ) ),
+        );
+
+        if ( '' !== $values['description'] ) {
+            $article['description'] = $values['description'];
+        }
+
+        if ( '' !== $values['image'] ) {
+            $article['image'] = array( '@id' => $image_id );
+        }
+
+        $published = get_post_time( DATE_W3C, true, $post );
+        if ( $published ) {
+            $article['datePublished'] = $published;
+        }
+
+        $modified = get_post_modified_time( DATE_W3C, true, $post );
+        if ( $modified ) {
+            $article['dateModified'] = $modified;
+        }
+
+        $author_name = get_the_author_meta( 'display_name', $post->post_author );
+        if ( $author_name ) {
+            $author = array(
+                '@type' => 'Person',
+                'name'  => $author_name,
+            );
+
+            $author_url = get_author_posts_url( $post->post_author );
+            if ( $author_url ) {
+                $author['url'] = $author_url;
+            }
+
+            $article['author'] = $author;
+        }
+
+        $article['publisher'] = array( '@id' => $organization_id );
+
+        $graph[] = $article;
+
+        if ( '' !== $values['image'] ) {
+            $graph[] = array(
+                '@type' => 'ImageObject',
+                '@id'   => $image_id,
+                'url'   => $values['image'],
+            );
+        }
+
+        $item_list['@id'] = $item_list_id;
+        $graph[]          = $item_list;
+
+        return array(
+            '@context' => 'https://schema.org',
+            '@graph'   => $graph,
+        );
+    }
+
+    /**
+     * Resolve schema values combining automatic data, overrides, and fallbacks.
+     *
+     * @param WP_Post $post Post object.
+     *
+     * @return array<string,string>
+     */
+    protected function resolve_schema_values( WP_Post $post ): array {
+        $overrides = $this->settings->get_post_schema_overrides( $post );
+        $fallbacks = $this->settings->get_schema_fallbacks( $post->post_type );
+
+        $headline = $overrides['headline'] ?: wp_strip_all_tags( get_the_title( $post ) );
+        if ( '' === $headline ) {
+            $headline = $fallbacks['headline'];
+        }
+
+        $description = $overrides['description'] ?: $this->generate_description( $post );
+        if ( '' === $description ) {
+            $description = $fallbacks['description'];
+        }
+
+        $image = $overrides['image'] ?: $this->resolve_primary_image( $post );
+        if ( '' === $image ) {
+            $image = $fallbacks['image'];
+        }
+
+        return array(
+            'headline'    => $headline,
+            'description' => $description,
+            'image'       => $image,
+        );
+    }
+
+    /**
+     * Generate a description from the post content.
+     */
+    protected function generate_description( WP_Post $post ): string {
+        $excerpt = get_the_excerpt( $post );
+
+        if ( is_string( $excerpt ) && '' !== trim( $excerpt ) ) {
+            return wp_strip_all_tags( $excerpt );
+        }
+
+        $content = wp_strip_all_tags( $post->post_content );
+
+        if ( '' === $content ) {
+            return '';
+        }
+
+        return wp_trim_words( $content, 40, '' );
+    }
+
+    /**
+     * Determine the primary image URL for the post.
+     */
+    protected function resolve_primary_image( WP_Post $post ): string {
+        $thumbnail = get_the_post_thumbnail_url( $post, 'full' );
+
+        if ( is_string( $thumbnail ) && '' !== $thumbnail ) {
+            return esc_url_raw( $thumbnail );
+        }
+
+        return '';
+    }
+
+    /**
+     * Build breadcrumb list data for the post.
+     */
+    protected function build_breadcrumb_list( WP_Post $post, string $breadcrumb_id ): array {
+        $position = 1;
+        $items    = array();
+
+        $items[] = array(
+            '@type'    => 'ListItem',
+            'position' => $position++,
+            'name'     => get_bloginfo( 'name' ),
+            'item'     => home_url( '/' ),
+        );
+
+        if ( is_post_type_hierarchical( $post->post_type ) ) {
+            $ancestors = array_reverse( get_post_ancestors( $post ) );
+
+            foreach ( $ancestors as $ancestor_id ) {
+                $items[] = array(
+                    '@type'    => 'ListItem',
+                    'position' => $position++,
+                    'name'     => wp_strip_all_tags( get_the_title( $ancestor_id ) ),
+                    'item'     => get_permalink( $ancestor_id ),
+                );
+            }
+        } elseif ( 'post' === $post->post_type ) {
+            $categories = get_the_category( $post->ID );
+
+            if ( ! empty( $categories ) && ! is_wp_error( $categories ) ) {
+                $primary = $categories[0];
+
+                $items[] = array(
+                    '@type'    => 'ListItem',
+                    'position' => $position++,
+                    'name'     => $primary->name,
+                    'item'     => get_category_link( $primary ),
+                );
+            }
+        }
+
+        $items[] = array(
+            '@type'    => 'ListItem',
+            'position' => $position,
+            'name'     => wp_strip_all_tags( get_the_title( $post ) ),
+            'item'     => get_permalink( $post ),
+        );
+
+        return array(
+            '@type'           => 'BreadcrumbList',
+            '@id'             => $breadcrumb_id,
+            'itemListElement' => $items,
+        );
+    }
+
+    /**
+     * Determine the schema.org type for the main content.
+     */
+    protected function get_article_type( WP_Post $post ): string {
+        if ( 'product' === $post->post_type ) {
+            return 'Product';
+        }
+
+        if ( 'page' === $post->post_type ) {
+            return 'WebPage';
+        }
+
+        return 'Article';
+    }
+
+    /**
+     * Check whether a supported SEO plugin is active.
+     */
+    protected function is_seo_plugin_active(): bool {
+        return defined( 'RANK_MATH_VERSION' ) || defined( 'WPSEO_VERSION' );
     }
 }

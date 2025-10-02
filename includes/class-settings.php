@@ -57,6 +57,18 @@ class Settings {
                 'type'    => 'boolean',
                 'default' => false,
             ),
+            'organization_name'   => array(
+                'type'    => 'string',
+                'default' => get_bloginfo( 'name' ),
+            ),
+            'organization_url'    => array(
+                'type'    => 'url',
+                'default' => home_url( '/' ),
+            ),
+            'organization_logo'   => array(
+                'type'    => 'url',
+                'default' => $this->get_default_logo_url(),
+            ),
         );
 
         $style_defaults = array(
@@ -93,6 +105,21 @@ class Settings {
             foreach ( $alignment_defaults as $field => $data ) {
                 $schema[ $context . '_' . $field ] = $data;
             }
+
+            $schema[ $context . '_schema_fallback_headline' ] = array(
+                'type'    => 'string',
+                'default' => '',
+            );
+
+            $schema[ $context . '_schema_fallback_description' ] = array(
+                'type'    => 'string',
+                'default' => '',
+            );
+
+            $schema[ $context . '_schema_fallback_image' ] = array(
+                'type'    => 'url',
+                'default' => '',
+            );
         }
 
         return $schema;
@@ -196,6 +223,9 @@ class Settings {
                 case 'color':
                     $output[ $key ] = $this->sanitize_color_value( $value, $data['default'] );
                     break;
+                case 'url':
+                    $output[ $key ] = $this->sanitize_url_value( $value, $data['default'] );
+                    break;
                 case 'enum':
                     $choices        = isset( $data['choices'] ) && is_array( $data['choices'] ) ? $data['choices'] : array();
                     $output[ $key ] = $this->sanitize_enum_value( $value, $choices, $data['default'] );
@@ -298,6 +328,64 @@ class Settings {
         $preferences['excluded_headings'] = $this->sanitize_excluded_headings( $meta['excluded_headings'] ?? array() );
 
         return $preferences;
+    }
+
+    /**
+     * Retrieve structured data fallback values for a post type.
+     *
+     * @param string $post_type Post type slug.
+     *
+     * @return array<string,string>
+     */
+    public function get_schema_fallbacks( string $post_type ): array {
+        $settings = $this->get_settings();
+        $prefix   = $this->get_style_prefix( $post_type );
+
+        return array(
+            'headline'    => $settings[ $prefix . '_schema_fallback_headline' ] ?? '',
+            'description' => $settings[ $prefix . '_schema_fallback_description' ] ?? '',
+            'image'       => $settings[ $prefix . '_schema_fallback_image' ] ?? '',
+        );
+    }
+
+    /**
+     * Retrieve structured data overrides saved on a specific post.
+     *
+     * @param WP_Post $post Post object.
+     *
+     * @return array<string,string>
+     */
+    public function get_post_schema_overrides( WP_Post $post ): array {
+        $meta = get_post_meta( $post->ID, self::META_KEY, true );
+
+        if ( ! is_array( $meta ) ) {
+            $meta = array();
+        }
+
+        $headline    = isset( $meta['schema_headline'] ) ? sanitize_text_field( $meta['schema_headline'] ) : '';
+        $description = isset( $meta['schema_description'] ) ? sanitize_textarea_field( $meta['schema_description'] ) : '';
+        $image       = isset( $meta['schema_image'] ) ? $this->sanitize_url_value( $meta['schema_image'], '' ) : '';
+
+        return array(
+            'headline'    => $headline,
+            'description' => $description,
+            'image'       => $image,
+        );
+    }
+
+    /**
+     * Global organisation structured data settings.
+     *
+     * @return array{name:string,url:string,logo:string}
+     */
+    public function get_organization_settings(): array {
+        $settings = $this->get_settings();
+
+        return array(
+            'name' => $settings['organization_name'] ?? get_bloginfo( 'name' ),
+            'url'  => $settings['organization_url'] ?? home_url( '/' ),
+            'logo' => $settings['organization_logo'] ?? '',
+        );
     }
 
     /**
@@ -436,5 +524,38 @@ class Settings {
      */
     public function sanitize_vertical_alignment( $value, string $fallback ): string {
         return $this->sanitize_enum_value( $value, $this->get_vertical_alignment_choices(), $fallback );
+    }
+
+    /**
+     * Sanitize URL based settings values.
+     *
+     * @param mixed  $value    Submitted value.
+     * @param string $fallback Default when invalid.
+     */
+    protected function sanitize_url_value( $value, string $fallback ): string {
+        if ( ! is_string( $value ) ) {
+            return $fallback;
+        }
+
+        $url = esc_url_raw( trim( $value ) );
+
+        if ( '' === $url ) {
+            return $fallback;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Determine the default logo URL from the site icon.
+     */
+    protected function get_default_logo_url(): string {
+        $logo = function_exists( 'get_site_icon_url' ) ? get_site_icon_url() : '';
+
+        if ( ! is_string( $logo ) ) {
+            return '';
+        }
+
+        return $logo;
     }
 }
