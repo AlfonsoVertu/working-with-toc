@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: Working with TOC
- * Plugin URI:  https://workingwithweb.it/webagency
- * Description: Table of Contents plugin with structured data controls and Rank Math / Yoast SEO compatibility.
+ * Plugin Name: Working With TOC
+ * Plugin URI:  https://wordpress.org/plugins/working-with-toc/
+ * Description: Gestione avanzata dei Table of Contents con supporto DB personalizzato.
  * Version:     1.0.0
- * Author:      Alfonso Vertucci - Working with Web
- * Author URI:  https://workingwithweb.it/webagency
+ * Author:      Il Tuo Nome
+ * Author URI:  https://iltuosito.it
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: working-with-toc
@@ -20,8 +20,8 @@ namespace Working_With_TOC {
 
     defined( 'ABSPATH' ) || exit;
 
-    if ( ! defined( 'WWT_TOC_VERSION' ) ) {
-        define( 'WWT_TOC_VERSION', '1.0.0' );
+    if ( ! defined( 'WWTOC_VERSION' ) ) {
+        define( 'WWTOC_VERSION', '1.0.0' );
     }
 
     define( 'WWT_TOC_PLUGIN_FILE', __FILE__ );
@@ -47,6 +47,28 @@ namespace Working_With_TOC {
      */
     function working_with_toc_activate(): void {
         working_with_toc()->ensure_capability();
+
+        global $wpdb;
+
+        $installed_version = get_option( 'wwtoc_db_version' );
+        $current_version   = WWTOC_VERSION;
+
+        if ( $installed_version !== $current_version ) {
+            $table_name      = $wpdb->prefix . 'working_with_toc';
+            $charset_collate = $wpdb->get_charset_collate();
+
+            $sql = "CREATE TABLE $table_name (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            title text NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            PRIMARY KEY  (id)
+        ) $charset_collate;";
+
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            \dbDelta( $sql );
+
+            update_option( 'wwtoc_db_version', $current_version );
+        }
     }
 
     \register_activation_hook( __FILE__, __NAMESPACE__ . '\\working_with_toc_activate' );

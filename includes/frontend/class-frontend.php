@@ -64,14 +64,14 @@ class Frontend {
             'wwt-toc-frontend',
             WWT_TOC_PLUGIN_URL . 'assets/css/frontend.css',
             array(),
-            WWT_TOC_VERSION
+            WWTOC_VERSION
         );
 
         wp_enqueue_script(
             'wwt-toc-frontend',
             WWT_TOC_PLUGIN_URL . 'assets/js/frontend.js',
             array(),
-            WWT_TOC_VERSION,
+            WWTOC_VERSION,
             true
         );
     }
