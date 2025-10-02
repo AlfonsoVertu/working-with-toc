@@ -154,11 +154,26 @@ class Admin_Page {
                     'text_color'             => __( 'Colore del testo', 'working-with-toc' ),
                     'link_color'             => __( 'Colore dei link', 'working-with-toc' ),
                 );
+
+                $horizontal_options = array(
+                    'left'   => __( 'Sinistra', 'working-with-toc' ),
+                    'center' => __( 'Centro', 'working-with-toc' ),
+                    'right'  => __( 'Destra', 'working-with-toc' ),
+                );
+
+                $vertical_options = array(
+                    'top'    => __( 'In alto', 'working-with-toc' ),
+                    'bottom' => __( 'In basso', 'working-with-toc' ),
+                );
                 ?>
                 <div class="wwt-toc-card-grid">
                     <?php foreach ( $cards as $prefix => $card ) :
                         $title_field_name = sprintf( '%s[%s_title]', Settings::OPTION_NAME, $prefix );
                         $title_field_id   = sprintf( 'wwt_toc_%s_title', $prefix );
+                        $horizontal_field_name = sprintf( '%s[%s_horizontal_alignment]', Settings::OPTION_NAME, $prefix );
+                        $horizontal_field_id   = sprintf( 'wwt_toc_%s_horizontal_alignment', $prefix );
+                        $vertical_field_name   = sprintf( '%s[%s_vertical_alignment]', Settings::OPTION_NAME, $prefix );
+                        $vertical_field_id     = sprintf( 'wwt_toc_%s_vertical_alignment', $prefix );
                         ?>
                         <div class="wwt-toc-card">
                             <h2><?php echo esc_html( $card['heading'] ); ?></h2>
@@ -197,6 +212,24 @@ class Admin_Page {
                                             <input type="color" id="<?php echo esc_attr( $field_id ); ?>" name="<?php echo esc_attr( $field_name ); ?>" value="<?php echo esc_attr( $settings[ $prefix . '_' . $field ] ); ?>" />
                                         </div>
                                     <?php endforeach; ?>
+                                </div>
+                                <div class="wwt-toc-style__layout">
+                                    <div class="wwt-toc-style__layout-field">
+                                        <label for="<?php echo esc_attr( $horizontal_field_id ); ?>"><?php esc_html_e( 'Posizione orizzontale', 'working-with-toc' ); ?></label>
+                                        <select id="<?php echo esc_attr( $horizontal_field_id ); ?>" name="<?php echo esc_attr( $horizontal_field_name ); ?>">
+                                            <?php foreach ( $horizontal_options as $value => $label ) : ?>
+                                                <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $settings[ $prefix . '_horizontal_alignment' ], $value ); ?>><?php echo esc_html( $label ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="wwt-toc-style__layout-field">
+                                        <label for="<?php echo esc_attr( $vertical_field_id ); ?>"><?php esc_html_e( 'Posizione verticale', 'working-with-toc' ); ?></label>
+                                        <select id="<?php echo esc_attr( $vertical_field_id ); ?>" name="<?php echo esc_attr( $vertical_field_name ); ?>">
+                                            <?php foreach ( $vertical_options as $value => $label ) : ?>
+                                                <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $settings[ $prefix . '_vertical_alignment' ], $value ); ?>><?php echo esc_html( $label ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>

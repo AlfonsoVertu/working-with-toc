@@ -140,7 +140,7 @@ class Frontend {
             return $content;
         }
 
-        $toc_markup = $this->build_toc_markup( $headings, $preferences );
+        $toc_markup = $this->build_toc_markup( $headings, $preferences, (int) $post->ID );
 
         $shortcode_present = false;
 
@@ -173,11 +173,13 @@ class Frontend {
     /**
      * Build TOC markup.
      *
-     * @param array<int,array{title:string,id:string,level:int}> $headings Headings list.
+     * @param array<int,array{title:string,id:string,level:int}> $headings    Headings list.
+     * @param array<string,mixed>                               $preferences TOC preferences.
+     * @param int                                               $post_id     Current post ID.
      *
      * @return string
      */
-    protected function build_toc_markup( array $headings, array $preferences ): string {
+    protected function build_toc_markup( array $headings, array $preferences, int $post_id ): string {
         $items = '';
         foreach ( $headings as $heading ) {
             $indent = max( 0, $heading['level'] - 2 );
@@ -193,27 +195,25 @@ class Frontend {
             ? $preferences['title']
             : __( 'Indice dei contenuti', 'working-with-toc' );
 
-        $style_attribute = $this->build_inline_styles( $preferences );
+        $attributes = $this->build_container_attributes( $preferences, $post_id );
 
-        $markup = sprintf(
-            '<div class="wwt-toc-container" data-wwt-toc="true" data-expanded="false"%4$s>
-                <button class="wwt-toc-toggle" type="button" aria-expanded="false">
-                    <span class="wwt-toc-label">%1$s</span>
-                    <span class="wwt-toc-icon" aria-hidden="true"></span>
-                </button>
-                <div class="wwt-toc-content" hidden="hidden">
-                    <nav class="wwt-toc-nav" aria-label="%2$s">
-                        <ol class="wwt-toc-list">%3$s</ol>
-                    </nav>
-                </div>
-            </div>',
+        return sprintf(
+            '<div %4$s>' .
+                '<button class="wwt-toc-toggle" type="button" aria-expanded="true">' .
+                    '<span class="wwt-toc-label">%1$s</span>' .
+                    '<span class="wwt-toc-icon" aria-hidden="true"></span>' .
+                '</button>' .
+                '<div class="wwt-toc-content">' .
+                    '<nav class="wwt-toc-nav" aria-label="%2$s">' .
+                        '<ol class="wwt-toc-list">%3$s</ol>' .
+                    '</nav>' .
+                '</div>' .
+            '</div>',
             esc_html( $label ),
             esc_attr( $label ),
             $items,
-            $style_attribute
+            $attributes
         );
-
-        return $markup;
     }
 
     /**
@@ -271,9 +271,73 @@ class Frontend {
             return '';
         }
 
-        $style = implode( ';', $parts ) . ';';
+        return implode( ';', $parts ) . ';';
+    }
 
-        return ' style="' . esc_attr( $style ) . '"';
+    /**
+     * Build the attribute string applied to the TOC container element.
+     *
+     * @param array<string,mixed> $preferences TOC preferences.
+     * @param int                 $post_id     Current post ID.
+     */
+    protected function build_container_attributes( array $preferences, int $post_id ): string {
+        $post_id = absint( $post_id );
+        $id      = $post_id > 0 ? 'wwt-toc-' . $post_id : 'wwt-toc';
+
+        $horizontal_choices = $this->settings->get_horizontal_alignment_choices();
+        $vertical_choices   = $this->settings->get_vertical_alignment_choices();
+
+        $horizontal = $preferences['horizontal_alignment'] ?? '';
+        if ( ! is_string( $horizontal ) || ! in_array( $horizontal, $horizontal_choices, true ) ) {
+            $horizontal = 'right';
+        }
+
+        $vertical = $preferences['vertical_alignment'] ?? '';
+        if ( ! is_string( $vertical ) || ! in_array( $vertical, $vertical_choices, true ) ) {
+            $vertical = 'bottom';
+        }
+
+        $attributes = array(
+            'id'            => $id,
+            'class'         => 'wwt-toc-container',
+            'data-wwt-toc'  => 'true',
+            'data-expanded' => 'true',
+            'data-align-x'  => $horizontal,
+            'data-align-y'  => $vertical,
+        );
+
+        $style = $this->build_inline_styles( $preferences );
+        if ( '' !== $style ) {
+            $attributes['style'] = $style;
+        }
+
+        $color_map = array(
+            'bg'          => 'background_color',
+            'text'        => 'text_color',
+            'link'        => 'link_color',
+            'title-bg'    => 'title_background_color',
+            'title-color' => 'title_color',
+        );
+
+        foreach ( $color_map as $data_key => $preference_key ) {
+            if ( empty( $preferences[ $preference_key ] ) ) {
+                continue;
+            }
+
+            $attributes[ 'data-' . $data_key ] = $preferences[ $preference_key ];
+        }
+
+        $parts = array();
+
+        foreach ( $attributes as $name => $value ) {
+            if ( '' === $value ) {
+                continue;
+            }
+
+            $parts[] = sprintf( '%s="%s"', $name, esc_attr( $value ) );
+        }
+
+        return implode( ' ', $parts );
     }
 
     /**

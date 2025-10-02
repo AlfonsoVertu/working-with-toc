@@ -13,6 +13,23 @@
         return;
     }
 
+    const applyContainerColors = (container) => {
+        const map = {
+            bg: '--wwt-toc-bg',
+            text: '--wwt-toc-text',
+            link: '--wwt-toc-link',
+            titleBg: '--wwt-toc-title-bg',
+            titleColor: '--wwt-toc-title-color',
+        };
+
+        Object.entries(map).forEach(([dataKey, cssVar]) => {
+            const value = container.dataset[dataKey];
+            if (value) {
+                container.style.setProperty(cssVar, value);
+            }
+        });
+    };
+
     const togglePanel = (container, expanded) => {
         const button = container.querySelector('.wwt-toc-toggle');
         const panel = container.querySelector('.wwt-toc-content');
@@ -27,13 +44,17 @@
     };
 
     containers.forEach((container) => {
+        applyContainerColors(container);
+
         const button = container.querySelector('.wwt-toc-toggle');
         const panel = container.querySelector('.wwt-toc-content');
-        const links = panel ? Array.from(panel.querySelectorAll('a[href^="#"]')) : [];
 
         if (!button || !panel) {
             return;
         }
+
+        const expanded = container.dataset.expanded === 'true';
+        togglePanel(container, expanded);
 
         button.addEventListener('click', () => {
             const expanded = container.dataset.expanded === 'true';
@@ -45,12 +66,6 @@
                 togglePanel(container, false);
             }
         });
-
-        if (links.length) {
-            links.forEach((link) => {
-                link.addEventListener('click', () => togglePanel(container, false));
-            });
-        }
     });
 
     const highlightActiveHeading = () => {

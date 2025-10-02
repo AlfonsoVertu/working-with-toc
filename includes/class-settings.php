@@ -29,7 +29,7 @@ class Settings {
     /**
      * Schema describing all available options.
      *
-     * @return array<string,array{type:string,default:mixed}>
+     * @return array<string,array{type:string,default:mixed,choices?:array<int|string,mixed>}>
      */
     public function get_option_schema(): array {
         $schema = array(
@@ -68,6 +68,19 @@ class Settings {
             'text_color'             => '#e2e8f0',
         );
 
+        $alignment_defaults = array(
+            'horizontal_alignment' => array(
+                'type'    => 'enum',
+                'default' => 'right',
+                'choices' => $this->get_horizontal_alignment_choices(),
+            ),
+            'vertical_alignment'   => array(
+                'type'    => 'enum',
+                'default' => 'bottom',
+                'choices' => $this->get_vertical_alignment_choices(),
+            ),
+        );
+
         foreach ( array( 'posts', 'pages', 'products' ) as $context ) {
             foreach ( $style_defaults as $field => $default ) {
                 $type                              = ( 'title' === $field ) ? 'string' : 'color';
@@ -75,6 +88,10 @@ class Settings {
                     'type'    => $type,
                     'default' => $default,
                 );
+            }
+
+            foreach ( $alignment_defaults as $field => $data ) {
+                $schema[ $context . '_' . $field ] = $data;
             }
         }
 
@@ -179,6 +196,10 @@ class Settings {
                 case 'color':
                     $output[ $key ] = $this->sanitize_color_value( $value, $data['default'] );
                     break;
+                case 'enum':
+                    $choices        = isset( $data['choices'] ) && is_array( $data['choices'] ) ? $data['choices'] : array();
+                    $output[ $key ] = $this->sanitize_enum_value( $value, $choices, $data['default'] );
+                    break;
                 case 'string':
                 default:
                     $sanitized        = is_string( $value ) ? sanitize_text_field( $value ) : '';
@@ -215,6 +236,11 @@ class Settings {
         $preferences = array();
 
         foreach ( $this->get_style_fields() as $field ) {
+            $key                   = $prefix . '_' . $field;
+            $preferences[ $field ] = $settings[ $key ] ?? '';
+        }
+
+        foreach ( $this->get_layout_fields() as $field ) {
             $key                   = $prefix . '_' . $field;
             $preferences[ $field ] = $settings[ $key ] ?? '';
         }
@@ -256,6 +282,14 @@ class Settings {
             }
         }
 
+        if ( isset( $meta['horizontal_alignment'] ) ) {
+            $preferences['horizontal_alignment'] = $this->sanitize_horizontal_alignment( $meta['horizontal_alignment'], $defaults['horizontal_alignment'] );
+        }
+
+        if ( isset( $meta['vertical_alignment'] ) ) {
+            $preferences['vertical_alignment'] = $this->sanitize_vertical_alignment( $meta['vertical_alignment'], $defaults['vertical_alignment'] );
+        }
+
         $preferences['excluded_headings'] = $this->sanitize_excluded_headings( $meta['excluded_headings'] ?? array() );
 
         return $preferences;
@@ -268,6 +302,15 @@ class Settings {
      */
     protected function get_style_fields(): array {
         return array( 'title', 'title_color', 'title_background_color', 'background_color', 'link_color', 'text_color' );
+    }
+
+    /**
+     * List of layout fields controlling the TOC placement.
+     *
+     * @return array<int,string>
+     */
+    protected function get_layout_fields(): array {
+        return array( 'horizontal_alignment', 'vertical_alignment' );
     }
 
     /**
@@ -307,6 +350,27 @@ class Settings {
     }
 
     /**
+     * Sanitize an enum value based on allowed choices.
+     *
+     * @param mixed            $value    Submitted value.
+     * @param array<int,mixed> $choices  Allowed choices.
+     * @param string           $fallback Default value when invalid.
+     */
+    protected function sanitize_enum_value( $value, array $choices, string $fallback ): string {
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        } else {
+            $value = sanitize_text_field( $value );
+        }
+
+        if ( in_array( $value, $choices, true ) ) {
+            return $value;
+        }
+
+        return $fallback;
+    }
+
+    /**
      * Sanitize the excluded headings list coming from post meta.
      *
      * @param mixed $value Stored value.
@@ -335,5 +399,37 @@ class Settings {
         }
 
         return array_values( array_unique( $sanitized ) );
+    }
+
+    /**
+     * Allowed values for horizontal alignment.
+     *
+     * @return array<int,string>
+     */
+    public function get_horizontal_alignment_choices(): array {
+        return array( 'left', 'center', 'right' );
+    }
+
+    /**
+     * Allowed values for vertical alignment.
+     *
+     * @return array<int,string>
+     */
+    public function get_vertical_alignment_choices(): array {
+        return array( 'top', 'bottom' );
+    }
+
+    /**
+     * Sanitize a horizontal alignment value.
+     */
+    public function sanitize_horizontal_alignment( $value, string $fallback ): string {
+        return $this->sanitize_enum_value( $value, $this->get_horizontal_alignment_choices(), $fallback );
+    }
+
+    /**
+     * Sanitize a vertical alignment value.
+     */
+    public function sanitize_vertical_alignment( $value, string $fallback ): string {
+        return $this->sanitize_enum_value( $value, $this->get_vertical_alignment_choices(), $fallback );
     }
 }

@@ -109,6 +109,27 @@ class Meta_Box {
             }
         }
 
+        $horizontal_alignment = $defaults['horizontal_alignment'];
+        if ( isset( $meta['horizontal_alignment'] ) ) {
+            $horizontal_alignment = $this->settings->sanitize_horizontal_alignment( $meta['horizontal_alignment'], $horizontal_alignment );
+        }
+
+        $vertical_alignment = $defaults['vertical_alignment'];
+        if ( isset( $meta['vertical_alignment'] ) ) {
+            $vertical_alignment = $this->settings->sanitize_vertical_alignment( $meta['vertical_alignment'], $vertical_alignment );
+        }
+
+        $horizontal_options = array(
+            'left'   => __( 'Sinistra', 'working-with-toc' ),
+            'center' => __( 'Centro', 'working-with-toc' ),
+            'right'  => __( 'Destra', 'working-with-toc' ),
+        );
+
+        $vertical_options = array(
+            'top'    => __( 'In alto', 'working-with-toc' ),
+            'bottom' => __( 'In basso', 'working-with-toc' ),
+        );
+
         $headings = $this->get_headings( $post );
         $excluded = $this->sanitize_heading_ids( $meta['excluded_headings'] ?? array() );
         ?>
@@ -139,6 +160,28 @@ class Meta_Box {
                             <span class="wwt-toc-meta__color-value" data-target="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( strtoupper( $value ) ); ?></span>
                         </div>
                     <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="wwt-toc-meta__group">
+                <span class="wwt-toc-meta__label"><?php esc_html_e( 'Posizionamento della TOC', 'working-with-toc' ); ?></span>
+                <div class="wwt-toc-meta__layout">
+                    <label for="wwt_toc_meta_horizontal_alignment">
+                        <?php esc_html_e( 'Posizione orizzontale', 'working-with-toc' ); ?>
+                        <select id="wwt_toc_meta_horizontal_alignment" name="wwt_toc_meta[horizontal_alignment]">
+                            <?php foreach ( $horizontal_options as $value => $label ) : ?>
+                                <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $horizontal_alignment, $value ); ?>><?php echo esc_html( $label ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label for="wwt_toc_meta_vertical_alignment">
+                        <?php esc_html_e( 'Posizione verticale', 'working-with-toc' ); ?>
+                        <select id="wwt_toc_meta_vertical_alignment" name="wwt_toc_meta[vertical_alignment]">
+                            <?php foreach ( $vertical_options as $value => $label ) : ?>
+                                <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $vertical_alignment, $value ); ?>><?php echo esc_html( $label ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
                 </div>
             </div>
 
@@ -214,6 +257,22 @@ class Meta_Box {
 
             if ( strtolower( $value ) !== strtolower( $defaults[ $field ] ) ) {
                 $data[ $field ] = $value;
+            }
+        }
+
+        if ( isset( $input['horizontal_alignment'] ) ) {
+            $alignment = $this->settings->sanitize_horizontal_alignment( wp_unslash( $input['horizontal_alignment'] ), $defaults['horizontal_alignment'] );
+
+            if ( $alignment !== $defaults['horizontal_alignment'] ) {
+                $data['horizontal_alignment'] = $alignment;
+            }
+        }
+
+        if ( isset( $input['vertical_alignment'] ) ) {
+            $alignment = $this->settings->sanitize_vertical_alignment( wp_unslash( $input['vertical_alignment'] ), $defaults['vertical_alignment'] );
+
+            if ( $alignment !== $defaults['vertical_alignment'] ) {
+                $data['vertical_alignment'] = $alignment;
             }
         }
 
