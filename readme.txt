@@ -59,6 +59,9 @@ working-with-toc/
 └── README.md
 ```
 
+> Maintenance note: Legacy root-level loaders `class-toc-json.php` and `class-toc-product-json.php` were removed because the PSR
+-4 autoloader now serves the modern classes from the `includes/` directory.
+
 = Backend Settings =
 The admin menu gains a **Working with TOC** page with individual cards for each content type. Toggles let you decide whether the TOC and structured data should load for posts, pages, or WooCommerce products. Gradients, soft shadows, and micro animations deliver a premium experience.
 
