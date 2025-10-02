@@ -201,8 +201,9 @@ class Frontend {
             : __( 'Table of contents', 'working-with-toc' );
 
         $container_id         = $this->get_container_id( $post_id );
+        $heading_id           = $container_id . '-heading';
         $toggle_id            = $container_id . '-toggle';
-        $title_id             = $container_id . '-title';
+        $toggle_hint_id       = $toggle_id . '-hint';
         $content_id           = $container_id . '-content';
         $container_attributes = $this->build_container_attributes( $preferences, $post_id );
         $toggle_attributes    = $this->stringify_attributes(
@@ -212,20 +213,21 @@ class Frontend {
                 'type'            => 'button',
                 'aria-expanded'   => 'true',
                 'aria-controls'   => $content_id,
-                'aria-labelledby' => $title_id,
+                'aria-labelledby' => $heading_id,
+                'aria-describedby' => $toggle_hint_id,
             )
         );
-        $label_attributes     = $this->stringify_attributes(
+        $heading_attributes   = $this->stringify_attributes(
             array(
-                'id'    => $title_id,
-                'class' => 'wwt-toc-label',
+                'id'    => $heading_id,
+                'class' => 'wwt-toc-heading',
             )
         );
         $content_attributes   = $this->stringify_attributes(
             array(
                 'id'              => $content_id,
                 'class'           => 'wwt-toc-content',
-                'aria-labelledby' => $title_id,
+                'aria-labelledby' => $heading_id,
             )
         );
 
@@ -233,20 +235,25 @@ class Frontend {
 
         $markup = sprintf(
             '<div %1$s>' .
-                '<button %2$s>' .
-                    '<span %3$s>%4$s</span>' .
-                    '<span class="wwt-toc-icon" aria-hidden="true"></span>' .
-                '</button>' .
-                '<div %5$s>' .
-                    '<nav class="wwt-toc-nav" aria-label="%6$s">' .
-                        '<ol class="wwt-toc-list">%7$s</ol>' .
+                '<div class="wwt-toc-header">' .
+                    '<h2 %2$s>%3$s</h2>' .
+                    '<button %4$s>' .
+                        '<span id="%5$s" class="screen-reader-text">%6$s</span>' .
+                        '<span class="wwt-toc-icon" aria-hidden="true"></span>' .
+                    '</button>' .
+                '</div>' .
+                '<div %7$s>' .
+                    '<nav class="wwt-toc-nav" aria-label="%8$s" role="doc-toc">' .
+                        '<ol class="wwt-toc-list">%9$s</ol>' .
                     '</nav>' .
                 '</div>' .
             '</div>',
             $container_attributes,
-            $toggle_attributes,
-            $label_attributes,
+            $heading_attributes,
             esc_html( $label ),
+            $toggle_attributes,
+            esc_attr( $toggle_hint_id ),
+            esc_html__( 'Toggle table of contents visibility', 'working-with-toc' ),
             $content_attributes,
             esc_attr( $label ),
             $items
