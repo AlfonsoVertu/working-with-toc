@@ -57,6 +57,7 @@ class Plugin {
         $this->structured_data = new Structured_Data_Manager( $this->settings, $this->frontend );
 
         add_action( 'init', array( $this, 'load_textdomain' ) );
+        add_action( 'init', array( $this, 'ensure_capability' ) );
         add_action( 'admin_init', array( $this->settings, 'register' ) );
         add_action( 'admin_menu', array( $this->admin, 'register_menu' ) );
         add_action( 'admin_enqueue_scripts', array( $this->admin, 'enqueue_assets' ) );
@@ -75,6 +76,21 @@ class Plugin {
         add_filter( 'wpseo_schema_graph', array( $this->structured_data, 'filter_yoast_schema_graph' ) );
 
         Logger::log( 'Plugin initialised.' );
+    }
+
+    /**
+     * Ensure administrators can manage the plugin settings.
+     */
+    public function ensure_capability(): void {
+        $role = \get_role( 'administrator' );
+
+        if ( ! $role ) {
+            return;
+        }
+
+        if ( ! $role->has_cap( Admin_Page::DEFAULT_CAPABILITY ) ) {
+            $role->add_cap( Admin_Page::DEFAULT_CAPABILITY );
+        }
     }
 
     /**

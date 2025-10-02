@@ -32,13 +32,31 @@ class Admin_Page {
     protected $capability;
 
     /**
+     * Default capability required to access the admin page.
+     */
+    public const DEFAULT_CAPABILITY = 'manage_working_with_toc';
+
+    /**
      * Constructor.
      *
      * @param Settings $settings Settings manager.
      */
     public function __construct( Settings $settings ) {
-        $this->settings = $settings;
-        $this->capability = apply_filters( 'working_with_toc_admin_capability', 'manage_options' );
+        $this->settings   = $settings;
+        $this->capability = $this->determine_capability();
+    }
+
+    /**
+     * Determine the capability required to access the admin page.
+     */
+    protected function determine_capability(): string {
+        $capability = apply_filters( 'working_with_toc_admin_capability', self::DEFAULT_CAPABILITY );
+
+        if ( ! is_string( $capability ) || '' === $capability ) {
+            $capability = self::DEFAULT_CAPABILITY;
+        }
+
+        return $capability;
     }
 
     /**
