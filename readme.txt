@@ -1,3 +1,5 @@
+![Working with TOC logo](assets/images/www-logo.png)
+
 === Working with TOC ===
 Contributors: workingwithweb
 Tags: table of contents, seo, accessibility, structured data, multisite
