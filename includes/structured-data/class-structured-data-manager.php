@@ -62,12 +62,13 @@ class Structured_Data_Manager {
             return;
         }
 
-        $headings = $this->collect_headings( $post );
+        $preferences = $this->settings->get_post_preferences( $post );
+        $headings    = $this->collect_headings( $post, $preferences );
         if ( empty( $headings ) ) {
             return;
         }
 
-        $schema = $this->build_schema( $post, $headings );
+        $schema = $this->build_schema( $post, $headings, $preferences );
 
         if ( empty( $schema ) ) {
             return;
@@ -95,12 +96,13 @@ class Structured_Data_Manager {
             return $graph;
         }
 
-        $headings = $this->collect_headings( $post );
+        $preferences = $this->settings->get_post_preferences( $post );
+        $headings    = $this->collect_headings( $post, $preferences );
         if ( empty( $headings ) ) {
             return $graph;
         }
 
-        $schema = $this->build_schema( $post, $headings );
+        $schema = $this->build_schema( $post, $headings, $preferences );
         if ( empty( $schema ) ) {
             return $graph;
         }
@@ -114,11 +116,12 @@ class Structured_Data_Manager {
     /**
      * Collect headings for the current post.
      *
-     * @param WP_Post $post Post object.
+     * @param WP_Post                $post         Post object.
+     * @param array<string,mixed>    $preferences  Style preferences for the post.
      *
      * @return array<int, array{title:string, url:string}>
      */
-    protected function collect_headings( WP_Post $post ): array {
+    protected function collect_headings( WP_Post $post, array $preferences ): array {
         $callback = array( $this->frontend, 'inject_toc' );
         $priority = has_filter( 'the_content', $callback );
 
@@ -135,7 +138,15 @@ class Structured_Data_Manager {
         $parsed   = Heading_Parser::parse( $content );
         $headings = array();
 
+        $excluded = isset( $preferences['excluded_headings'] ) && is_array( $preferences['excluded_headings'] )
+            ? array_fill_keys( $preferences['excluded_headings'], true )
+            : array();
+
         foreach ( $parsed['headings'] as $heading ) {
+            if ( isset( $excluded[ $heading['id'] ] ) ) {
+                continue;
+            }
+
             $headings[] = array(
                 'title' => $heading['title'],
                 'url'   => get_permalink( $post ) . '#' . $heading['id'],
@@ -152,18 +163,23 @@ class Structured_Data_Manager {
     /**
      * Build schema array for JSON-LD.
      *
-     * @param WP_Post $post     Post object.
-     * @param array   $headings Headings with titles & URLs.
+     * @param WP_Post             $post         Post object.
+     * @param array               $headings     Headings with titles & URLs.
+     * @param array<string,mixed> $preferences  Post-specific preferences.
      *
      * @return array<string,mixed>
      */
-    protected function build_schema( WP_Post $post, array $headings ): array {
+    protected function build_schema( WP_Post $post, array $headings, array $preferences ): array {
         $type = 'Article';
         if ( 'product' === $post->post_type ) {
             $type = 'Product';
         } elseif ( 'page' === $post->post_type ) {
             $type = 'WebPage';
         }
+
+        $toc_title = isset( $preferences['title'] ) && '' !== trim( $preferences['title'] )
+            ? $preferences['title']
+            : __( 'Indice dei contenuti', 'working-with-toc' );
 
         $schema = array(
             '@context' => 'https://schema.org',
@@ -173,7 +189,7 @@ class Structured_Data_Manager {
             'url'      => get_permalink( $post ),
             'hasPart'  => array(
                 '@type' => 'TableOfContents',
-                'name'  => __( 'Indice dei contenuti', 'working-with-toc' ),
+                'name'  => $toc_title,
                 'about' => array(),
             ),
         );
