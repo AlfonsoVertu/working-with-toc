@@ -13,6 +13,7 @@
 ## Panoramica
 
 **Working with TOC** è un plugin WordPress pensato per creare automaticamente un indice dei contenuti elegante e mobile-friendly per articoli, pagine e prodotti. Il progetto dimostra una suddivisione del codice secondo le convenzioni WordPress (cartelle `includes/`, `admin/`, `frontend/`, `assets/`) e include strumenti per generare dati strutturati compatibili con Rank Math e Yoast SEO.
+La configurazione viene salvata attraverso le normali opzioni e i meta di WordPress, senza creare tabelle personalizzate o opzioni di versioning dedicate.
 
 ## Caratteristiche principali
 

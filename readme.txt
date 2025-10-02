@@ -11,6 +11,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 == Description ==
 Working with TOC creates a polished, mobile-friendly table of contents (TOC) for articles, pages, and WooCommerce products.
 The plugin respects WordPress coding conventions, splits responsibilities across dedicated folders, and integrates with Rank Math and Yoast SEO.
+It stores its configuration using standard WordPress options and post meta, without creating custom database tables or version-tracking options.
 
 = Key Features =
 * Sticky accordion TOC fixed to the bottom of the viewport with touch-friendly controls.
