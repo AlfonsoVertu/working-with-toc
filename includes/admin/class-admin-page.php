@@ -100,8 +100,8 @@ class Admin_Page {
             'wwt-toc-admin',
             'wwtTocAdmin',
             array(
-                'on'  => __( 'attivato', 'working-with-toc' ),
-                'off' => __( 'disattivato', 'working-with-toc' ),
+                'on'  => __( 'Activated', 'working-with-toc' ),
+                'off' => __( 'Deactivated', 'working-with-toc' ),
             )
         );
     }
@@ -119,7 +119,7 @@ class Admin_Page {
         ?>
         <div class="wrap wwt-toc-admin">
             <h1><?php esc_html_e( 'Working with TOC', 'working-with-toc' ); ?></h1>
-            <p class="wwt-toc-subtitle"><?php esc_html_e( 'Gestisci i dati strutturati per articoli, prodotti e pagine.', 'working-with-toc' ); ?></p>
+            <p class="wwt-toc-subtitle"><?php esc_html_e( 'Manage structured data for posts, products, and pages.', 'working-with-toc' ); ?></p>
 
             <form action="options.php" method="post" class="wwt-toc-form">
                 <?php
@@ -128,42 +128,42 @@ class Admin_Page {
                 <?php
                 $cards = array(
                     'posts'    => array(
-                        'heading'         => __( 'Articoli', 'working-with-toc' ),
-                        'description'     => __( 'Abilita la TOC e i dati strutturati per i post standard.', 'working-with-toc' ),
+                        'heading'         => __( 'Posts', 'working-with-toc' ),
+                        'description'     => __( 'Enable the TOC and structured data for standard posts.', 'working-with-toc' ),
                         'enable_key'      => 'enable_posts',
                         'structured_key'  => 'structured_posts',
                     ),
                     'pages'    => array(
-                        'heading'         => __( 'Pagine', 'working-with-toc' ),
-                        'description'     => __( 'Attiva la TOC per le pagine statiche del sito.', 'working-with-toc' ),
+                        'heading'         => __( 'Pages', 'working-with-toc' ),
+                        'description'     => __( "Enable the TOC for the site's static pages.", 'working-with-toc' ),
                         'enable_key'      => 'enable_pages',
                         'structured_key'  => 'structured_pages',
                     ),
                     'products' => array(
-                        'heading'         => __( 'Prodotti', 'working-with-toc' ),
-                        'description'     => __( 'Integrazione con WooCommerce per schede prodotto complete.', 'working-with-toc' ),
+                        'heading'         => __( 'Products', 'working-with-toc' ),
+                        'description'     => __( 'Integrate with WooCommerce for complete product pages.', 'working-with-toc' ),
                         'enable_key'      => 'enable_products',
                         'structured_key'  => 'structured_products',
                     ),
                 );
 
                 $color_labels = array(
-                    'title_color'            => __( 'Colore del titolo', 'working-with-toc' ),
-                    'title_background_color' => __( 'Sfondo del titolo', 'working-with-toc' ),
-                    'background_color'       => __( 'Sfondo del box', 'working-with-toc' ),
-                    'text_color'             => __( 'Colore del testo', 'working-with-toc' ),
-                    'link_color'             => __( 'Colore dei link', 'working-with-toc' ),
+                    'title_color'            => __( 'Title color', 'working-with-toc' ),
+                    'title_background_color' => __( 'Title background', 'working-with-toc' ),
+                    'background_color'       => __( 'Container background', 'working-with-toc' ),
+                    'text_color'             => __( 'Text color', 'working-with-toc' ),
+                    'link_color'             => __( 'Link color', 'working-with-toc' ),
                 );
 
                 $horizontal_options = array(
-                    'left'   => __( 'Sinistra', 'working-with-toc' ),
-                    'center' => __( 'Centro', 'working-with-toc' ),
-                    'right'  => __( 'Destra', 'working-with-toc' ),
+                    'left'   => __( 'Left', 'working-with-toc' ),
+                    'center' => __( 'Center', 'working-with-toc' ),
+                    'right'  => __( 'Right', 'working-with-toc' ),
                 );
 
                 $vertical_options = array(
-                    'top'    => __( 'In alto', 'working-with-toc' ),
-                    'bottom' => __( 'In basso', 'working-with-toc' ),
+                    'top'    => __( 'Top', 'working-with-toc' ),
+                    'bottom' => __( 'Bottom', 'working-with-toc' ),
                 );
                 ?>
                 <div class="wwt-toc-card-grid">
@@ -180,14 +180,14 @@ class Admin_Page {
                             <p><?php echo esc_html( $card['description'] ); ?></p>
                             <div class="wwt-toc-toggle-group">
                                 <div class="wwt-toc-toggle-row">
-                                    <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Indice dei contenuti', 'working-with-toc' ); ?></span>
+                                    <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Table of contents', 'working-with-toc' ); ?></span>
                                     <label class="wwt-switch">
                                         <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $card['enable_key'] ); ?>]" value="1" <?php checked( $settings[ $card['enable_key'] ] ); ?>>
                                         <span class="wwt-slider"></span>
                                     </label>
                                 </div>
                                 <div class="wwt-toc-toggle-row">
-                                    <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Dati strutturati TOC', 'working-with-toc' ); ?></span>
+                                    <span class="wwt-toc-toggle-label"><?php esc_html_e( 'TOC structured data', 'working-with-toc' ); ?></span>
                                     <label class="wwt-switch">
                                         <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $card['structured_key'] ); ?>]" value="1" <?php checked( $settings[ $card['structured_key'] ] ); ?>>
                                         <span class="wwt-slider"></span>
@@ -196,10 +196,10 @@ class Admin_Page {
                             </div>
 
                             <div class="wwt-toc-style">
-                                <h3 class="wwt-toc-style__title"><?php esc_html_e( 'Stile predefinito', 'working-with-toc' ); ?></h3>
-                                <p class="wwt-toc-style__hint"><?php esc_html_e( 'Imposta titolo e colori di base per l\'indice di questo tipo di contenuto.', 'working-with-toc' ); ?></p>
+                                <h3 class="wwt-toc-style__title"><?php esc_html_e( 'Default style', 'working-with-toc' ); ?></h3>
+                                <p class="wwt-toc-style__hint"><?php esc_html_e( 'Set the title and base colors for the table of contents on this content type.', 'working-with-toc' ); ?></p>
                                 <div class="wwt-toc-style__field">
-                                    <label for="<?php echo esc_attr( $title_field_id ); ?>"><?php esc_html_e( 'Titolo della TOC', 'working-with-toc' ); ?></label>
+                                    <label for="<?php echo esc_attr( $title_field_id ); ?>"><?php esc_html_e( 'TOC title', 'working-with-toc' ); ?></label>
                                     <input type="text" id="<?php echo esc_attr( $title_field_id ); ?>" name="<?php echo esc_attr( $title_field_name ); ?>" value="<?php echo esc_attr( $settings[ $prefix . '_title' ] ); ?>" class="widefat" />
                                 </div>
                                 <div class="wwt-toc-style__colors">
@@ -215,7 +215,7 @@ class Admin_Page {
                                 </div>
                                 <div class="wwt-toc-style__layout">
                                     <div class="wwt-toc-style__layout-field">
-                                        <label for="<?php echo esc_attr( $horizontal_field_id ); ?>"><?php esc_html_e( 'Posizione orizzontale', 'working-with-toc' ); ?></label>
+                                        <label for="<?php echo esc_attr( $horizontal_field_id ); ?>"><?php esc_html_e( 'Horizontal position', 'working-with-toc' ); ?></label>
                                         <select id="<?php echo esc_attr( $horizontal_field_id ); ?>" name="<?php echo esc_attr( $horizontal_field_name ); ?>">
                                             <?php foreach ( $horizontal_options as $value => $label ) : ?>
                                                 <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $settings[ $prefix . '_horizontal_alignment' ], $value ); ?>><?php echo esc_html( $label ); ?></option>
@@ -223,7 +223,7 @@ class Admin_Page {
                                         </select>
                                     </div>
                                     <div class="wwt-toc-style__layout-field">
-                                        <label for="<?php echo esc_attr( $vertical_field_id ); ?>"><?php esc_html_e( 'Posizione verticale', 'working-with-toc' ); ?></label>
+                                        <label for="<?php echo esc_attr( $vertical_field_id ); ?>"><?php esc_html_e( 'Vertical position', 'working-with-toc' ); ?></label>
                                         <select id="<?php echo esc_attr( $vertical_field_id ); ?>" name="<?php echo esc_attr( $vertical_field_name ); ?>">
                                             <?php foreach ( $vertical_options as $value => $label ) : ?>
                                                 <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $settings[ $prefix . '_vertical_alignment' ], $value ); ?>><?php echo esc_html( $label ); ?></option>
@@ -237,11 +237,11 @@ class Admin_Page {
                 </div>
 
                 <div class="wwt-toc-submit">
-                    <?php submit_button( __( 'Salva impostazioni', 'working-with-toc' ) ); ?>
+                    <?php submit_button( __( 'Save settings', 'working-with-toc' ) ); ?>
                 </div>
             </form>
             <footer class="wwt-toc-footer">
-                <p><?php esc_html_e( 'Compatibile con Rank Math e Yoast SEO. Attiva la modalità debug di WordPress per registrare gli eventi del plugin.', 'working-with-toc' ); ?></p>
+                <p><?php esc_html_e( 'Compatible with Rank Math and Yoast SEO. Enable WordPress debug mode to log plugin events.', 'working-with-toc' ); ?></p>
             </footer>
         </div>
         <?php

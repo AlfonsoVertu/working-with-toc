@@ -42,7 +42,7 @@ class Meta_Box {
         foreach ( $this->settings->get_supported_post_types() as $post_type ) {
             add_meta_box(
                 'wwt-toc-meta',
-                __( 'Indice dei contenuti', 'working-with-toc' ),
+                __( 'Table of contents', 'working-with-toc' ),
                 array( $this, 'render' ),
                 $post_type,
                 'side',
@@ -120,32 +120,32 @@ class Meta_Box {
         }
 
         $horizontal_options = array(
-            'left'   => __( 'Sinistra', 'working-with-toc' ),
-            'center' => __( 'Centro', 'working-with-toc' ),
-            'right'  => __( 'Destra', 'working-with-toc' ),
+            'left'   => __( 'Left', 'working-with-toc' ),
+            'center' => __( 'Center', 'working-with-toc' ),
+            'right'  => __( 'Right', 'working-with-toc' ),
         );
 
         $vertical_options = array(
-            'top'    => __( 'In alto', 'working-with-toc' ),
-            'bottom' => __( 'In basso', 'working-with-toc' ),
+            'top'    => __( 'Top', 'working-with-toc' ),
+            'bottom' => __( 'Bottom', 'working-with-toc' ),
         );
 
         $headings = $this->get_headings( $post );
         $excluded = $this->sanitize_heading_ids( $meta['excluded_headings'] ?? array() );
         ?>
         <div class="wwt-toc-meta">
-            <p class="wwt-toc-meta__description"><?php esc_html_e( 'Personalizza l\'indice dei contenuti per questo elemento. Le impostazioni globali del plugin verranno utilizzate quando i campi restano invariati.', 'working-with-toc' ); ?></p>
+        <p class="wwt-toc-meta__description"><?php esc_html_e( "Customize the table of contents for this entry. The plugin's global settings apply when fields are left unchanged.", 'working-with-toc' ); ?></p>
 
             <div class="wwt-toc-meta__group">
-                <label class="wwt-toc-meta__label" for="wwt_toc_meta_title"><?php esc_html_e( 'Titolo della TOC', 'working-with-toc' ); ?></label>
+                <label class="wwt-toc-meta__label" for="wwt_toc_meta_title"><?php esc_html_e( 'TOC title', 'working-with-toc' ); ?></label>
                 <div class="wwt-toc-meta__control">
                     <input type="text" id="wwt_toc_meta_title" name="wwt_toc_meta[title]" value="<?php echo esc_attr( $title_value ); ?>" placeholder="<?php echo esc_attr( $defaults['title'] ); ?>" data-default="<?php echo esc_attr( $defaults['title'] ); ?>" class="widefat" />
-                    <button type="button" class="button-link wwt-toc-meta__reset" data-target="wwt_toc_meta_title"><?php esc_html_e( 'Ripristina', 'working-with-toc' ); ?></button>
+                    <button type="button" class="button-link wwt-toc-meta__reset" data-target="wwt_toc_meta_title"><?php esc_html_e( 'Reset', 'working-with-toc' ); ?></button>
                 </div>
             </div>
 
             <div class="wwt-toc-meta__group">
-                <span class="wwt-toc-meta__label"><?php esc_html_e( 'Colori personalizzati', 'working-with-toc' ); ?></span>
+                <span class="wwt-toc-meta__label"><?php esc_html_e( 'Custom colors', 'working-with-toc' ); ?></span>
                 <div class="wwt-toc-meta__color-grid">
                     <?php foreach ( $colors as $key => $value ) :
                         $field_id = 'wwt_toc_meta_' . $key;
@@ -155,7 +155,7 @@ class Meta_Box {
                             <label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( $label ); ?></label>
                             <div class="wwt-toc-meta__color-controls">
                                 <input type="color" id="<?php echo esc_attr( $field_id ); ?>" name="wwt_toc_meta[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( $value ); ?>" data-default="<?php echo esc_attr( $defaults[ $key ] ); ?>" class="wwt-toc-meta__color-input" />
-                                <button type="button" class="button-link wwt-toc-meta__reset" data-target="<?php echo esc_attr( $field_id ); ?>"><?php esc_html_e( 'Ripristina', 'working-with-toc' ); ?></button>
+                                <button type="button" class="button-link wwt-toc-meta__reset" data-target="<?php echo esc_attr( $field_id ); ?>"><?php esc_html_e( 'Reset', 'working-with-toc' ); ?></button>
                             </div>
                             <span class="wwt-toc-meta__color-value" data-target="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( strtoupper( $value ) ); ?></span>
                         </div>
@@ -164,10 +164,10 @@ class Meta_Box {
             </div>
 
             <div class="wwt-toc-meta__group">
-                <span class="wwt-toc-meta__label"><?php esc_html_e( 'Posizionamento della TOC', 'working-with-toc' ); ?></span>
+                <span class="wwt-toc-meta__label"><?php esc_html_e( 'TOC placement', 'working-with-toc' ); ?></span>
                 <div class="wwt-toc-meta__layout">
                     <label for="wwt_toc_meta_horizontal_alignment">
-                        <?php esc_html_e( 'Posizione orizzontale', 'working-with-toc' ); ?>
+                        <?php esc_html_e( 'Horizontal position', 'working-with-toc' ); ?>
                         <select id="wwt_toc_meta_horizontal_alignment" name="wwt_toc_meta[horizontal_alignment]">
                             <?php foreach ( $horizontal_options as $value => $label ) : ?>
                                 <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $horizontal_alignment, $value ); ?>><?php echo esc_html( $label ); ?></option>
@@ -175,7 +175,7 @@ class Meta_Box {
                         </select>
                     </label>
                     <label for="wwt_toc_meta_vertical_alignment">
-                        <?php esc_html_e( 'Posizione verticale', 'working-with-toc' ); ?>
+                        <?php esc_html_e( 'Vertical position', 'working-with-toc' ); ?>
                         <select id="wwt_toc_meta_vertical_alignment" name="wwt_toc_meta[vertical_alignment]">
                             <?php foreach ( $vertical_options as $value => $label ) : ?>
                                 <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $vertical_alignment, $value ); ?>><?php echo esc_html( $label ); ?></option>
@@ -186,7 +186,7 @@ class Meta_Box {
             </div>
 
             <div class="wwt-toc-meta__group">
-                <span class="wwt-toc-meta__label"><?php esc_html_e( 'Titoli inclusi', 'working-with-toc' ); ?></span>
+                <span class="wwt-toc-meta__label"><?php esc_html_e( 'Included headings', 'working-with-toc' ); ?></span>
                 <?php if ( ! empty( $headings ) ) : ?>
                     <ul class="wwt-toc-meta__headings-list">
                         <?php foreach ( $headings as $heading ) :
@@ -201,9 +201,9 @@ class Meta_Box {
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <p class="wwt-toc-meta__hint"><?php esc_html_e( 'Deseleziona i titoli che non vuoi mostrare nell\'indice.', 'working-with-toc' ); ?></p>
+                    <p class="wwt-toc-meta__hint"><?php esc_html_e( 'Deselect the headings you do not want to display in the table of contents.', 'working-with-toc' ); ?></p>
                 <?php else : ?>
-                    <p class="wwt-toc-meta__empty"><?php esc_html_e( 'Aggiungi dei titoli (H2-H6) al contenuto e salva per generare automaticamente l\'indice.', 'working-with-toc' ); ?></p>
+                    <p class="wwt-toc-meta__empty"><?php esc_html_e( 'Add headings (H2-H6) to the content and save to generate the table of contents automatically.', 'working-with-toc' ); ?></p>
                 <?php endif; ?>
             </div>
         </div>
@@ -387,17 +387,17 @@ class Meta_Box {
     protected function get_color_label( string $field ): string {
         switch ( $field ) {
             case 'title_color':
-                return __( 'Colore del titolo', 'working-with-toc' );
+                return __( 'Title color', 'working-with-toc' );
             case 'title_background_color':
-                return __( 'Sfondo del titolo', 'working-with-toc' );
+                return __( 'Title background', 'working-with-toc' );
             case 'background_color':
-                return __( 'Sfondo del box', 'working-with-toc' );
+                return __( 'Container background', 'working-with-toc' );
             case 'text_color':
-                return __( 'Colore del testo', 'working-with-toc' );
+                return __( 'Text color', 'working-with-toc' );
             case 'link_color':
-                return __( 'Colore dei link', 'working-with-toc' );
+                return __( 'Link color', 'working-with-toc' );
             default:
-                return __( 'Colore', 'working-with-toc' );
+                return __( 'Color', 'working-with-toc' );
         }
     }
 }

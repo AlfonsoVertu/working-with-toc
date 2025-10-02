@@ -60,7 +60,7 @@ class Settings {
         );
 
         $style_defaults = array(
-            'title'                  => __( 'Indice dei contenuti', 'working-with-toc' ),
+            'title'                  => __( 'Table of contents', 'working-with-toc' ),
             'title_color'            => '#f8fafc',
             'title_background_color' => '#1e293b',
             'background_color'       => '#0f172a',

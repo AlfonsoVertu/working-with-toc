@@ -9,7 +9,7 @@
             $(this).removeClass('wwt-hover');
         });
 
-        const labels = window.wwtTocAdmin || { on: 'attivato', off: 'disattivato' };
+        const labels = window.wwtTocAdmin || { on: 'Activated', off: 'Deactivated' };
         $('.wwt-switch input').on('change', function () {
             const label = $(this).closest('.wwt-toc-card').find('h2').text();
             const state = $(this).is(':checked') ? labels.on : labels.off;

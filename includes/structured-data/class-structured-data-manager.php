@@ -179,7 +179,7 @@ class Structured_Data_Manager {
 
         $toc_title = isset( $preferences['title'] ) && '' !== trim( $preferences['title'] )
             ? $preferences['title']
-            : __( 'Indice dei contenuti', 'working-with-toc' );
+            : __( 'Table of contents', 'working-with-toc' );
 
         $schema = array(
             '@context' => 'https://schema.org',

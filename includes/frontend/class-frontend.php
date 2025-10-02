@@ -193,7 +193,7 @@ class Frontend {
 
         $label = isset( $preferences['title'] ) && '' !== trim( $preferences['title'] )
             ? $preferences['title']
-            : __( 'Indice dei contenuti', 'working-with-toc' );
+            : __( 'Table of contents', 'working-with-toc' );
 
         $container_id         = $this->get_container_id( $post_id );
         $toggle_id            = $container_id . '-toggle';
