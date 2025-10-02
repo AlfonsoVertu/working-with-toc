@@ -174,6 +174,12 @@ class Admin_Page {
                         $horizontal_field_id   = sprintf( 'wwt_toc_%s_horizontal_alignment', $prefix );
                         $vertical_field_name   = sprintf( '%s[%s_vertical_alignment]', Settings::OPTION_NAME, $prefix );
                         $vertical_field_id     = sprintf( 'wwt_toc_%s_vertical_alignment', $prefix );
+                        $headline_field_name   = sprintf( '%s[%s_schema_fallback_headline]', Settings::OPTION_NAME, $prefix );
+                        $headline_field_id     = sprintf( 'wwt_toc_%s_schema_fallback_headline', $prefix );
+                        $description_field_name = sprintf( '%s[%s_schema_fallback_description]', Settings::OPTION_NAME, $prefix );
+                        $description_field_id   = sprintf( 'wwt_toc_%s_schema_fallback_description', $prefix );
+                        $image_field_name       = sprintf( '%s[%s_schema_fallback_image]', Settings::OPTION_NAME, $prefix );
+                        $image_field_id         = sprintf( 'wwt_toc_%s_schema_fallback_image', $prefix );
                         ?>
                         <div class="wwt-toc-card">
                             <h2><?php echo esc_html( $card['heading'] ); ?></h2>
@@ -232,6 +238,23 @@ class Admin_Page {
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="wwt-toc-structured-data">
+                                <h3 class="wwt-toc-structured-data__title"><?php esc_html_e( 'Base structured data defaults', 'working-with-toc' ); ?></h3>
+                                <p class="wwt-toc-structured-data__hint"><?php esc_html_e( 'These values are used when the automatic headline, description, or image cannot be detected.', 'working-with-toc' ); ?></p>
+                                <div class="wwt-toc-structured-data__field">
+                                    <label for="<?php echo esc_attr( $headline_field_id ); ?>"><?php esc_html_e( 'Fallback headline', 'working-with-toc' ); ?></label>
+                                    <input type="text" id="<?php echo esc_attr( $headline_field_id ); ?>" name="<?php echo esc_attr( $headline_field_name ); ?>" value="<?php echo esc_attr( $settings[ $prefix . '_schema_fallback_headline' ] ); ?>" class="widefat" />
+                                </div>
+                                <div class="wwt-toc-structured-data__field">
+                                    <label for="<?php echo esc_attr( $description_field_id ); ?>"><?php esc_html_e( 'Fallback description', 'working-with-toc' ); ?></label>
+                                    <textarea id="<?php echo esc_attr( $description_field_id ); ?>" name="<?php echo esc_attr( $description_field_name ); ?>" rows="3" class="widefat"><?php echo esc_textarea( $settings[ $prefix . '_schema_fallback_description' ] ); ?></textarea>
+                                </div>
+                                <div class="wwt-toc-structured-data__field">
+                                    <label for="<?php echo esc_attr( $image_field_id ); ?>"><?php esc_html_e( 'Fallback image URL', 'working-with-toc' ); ?></label>
+                                    <input type="url" id="<?php echo esc_attr( $image_field_id ); ?>" name="<?php echo esc_attr( $image_field_name ); ?>" value="<?php echo esc_attr( $settings[ $prefix . '_schema_fallback_image' ] ); ?>" class="widefat" />
+                                </div>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -240,6 +263,24 @@ class Admin_Page {
                     <?php submit_button( __( 'Save settings', 'working-with-toc' ) ); ?>
                 </div>
             </form>
+            <section class="wwt-toc-organization">
+                <h2><?php esc_html_e( 'Organization structured data', 'working-with-toc' ); ?></h2>
+                <p><?php esc_html_e( 'Customise the organisation details used for fallback structured data output.', 'working-with-toc' ); ?></p>
+                <div class="wwt-toc-organization__grid">
+                    <div class="wwt-toc-organization__field">
+                        <label for="wwt_toc_organization_name"><?php esc_html_e( 'Organization name', 'working-with-toc' ); ?></label>
+                        <input type="text" id="wwt_toc_organization_name" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_name]" value="<?php echo esc_attr( $settings['organization_name'] ); ?>" class="regular-text" />
+                    </div>
+                    <div class="wwt-toc-organization__field">
+                        <label for="wwt_toc_organization_url"><?php esc_html_e( 'Organization URL', 'working-with-toc' ); ?></label>
+                        <input type="url" id="wwt_toc_organization_url" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_url]" value="<?php echo esc_attr( $settings['organization_url'] ); ?>" class="regular-text" />
+                    </div>
+                    <div class="wwt-toc-organization__field">
+                        <label for="wwt_toc_organization_logo"><?php esc_html_e( 'Logo URL', 'working-with-toc' ); ?></label>
+                        <input type="url" id="wwt_toc_organization_logo" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_logo]" value="<?php echo esc_attr( $settings['organization_logo'] ); ?>" class="regular-text" />
+                    </div>
+                </div>
+            </section>
             <footer class="wwt-toc-footer">
                 <p><?php esc_html_e( 'Compatible with Rank Math and Yoast SEO. Enable WordPress debug mode to log plugin events.', 'working-with-toc' ); ?></p>
             </footer>

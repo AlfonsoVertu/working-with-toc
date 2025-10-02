@@ -90,6 +90,17 @@ class Meta_Box {
 
         $title_value = isset( $meta['title'] ) ? sanitize_text_field( $meta['title'] ) : '';
 
+        $schema_overrides = $this->settings->get_post_schema_overrides( $post );
+        $schema_fallbacks = $this->settings->get_schema_fallbacks( $post->post_type );
+
+        $auto_headline    = wp_strip_all_tags( get_the_title( $post ) );
+        $auto_description = $this->generate_schema_description( $post );
+        $auto_image       = get_the_post_thumbnail_url( $post, 'full' );
+
+        $schema_headline_value    = $schema_overrides['headline'];
+        $schema_description_value = $schema_overrides['description'];
+        $schema_image_value       = $schema_overrides['image'];
+
         $colors = array(
             'title_color'            => $defaults['title_color'],
             'title_background_color' => $defaults['title_background_color'],
@@ -187,6 +198,23 @@ class Meta_Box {
                             <?php endforeach; ?>
                         </select>
                     </label>
+                </div>
+            </div>
+
+            <div class="wwt-toc-meta__group">
+                <span class="wwt-toc-meta__label"><?php esc_html_e( 'Structured data overrides', 'working-with-toc' ); ?></span>
+                <p class="wwt-toc-meta__hint"><?php esc_html_e( 'Update the fallback structured data values used when no SEO plugin provides a graph. Leave fields blank to use the automatic values.', 'working-with-toc' ); ?></p>
+                <div class="wwt-toc-meta__field">
+                    <label for="wwt_toc_meta_schema_headline"><?php esc_html_e( 'Headline', 'working-with-toc' ); ?></label>
+                    <input type="text" id="wwt_toc_meta_schema_headline" name="wwt_toc_meta[schema_headline]" value="<?php echo esc_attr( $schema_headline_value ); ?>" placeholder="<?php echo esc_attr( $schema_headline_value ? '' : ( $auto_headline ?: $schema_fallbacks['headline'] ) ); ?>" class="widefat" />
+                </div>
+                <div class="wwt-toc-meta__field">
+                    <label for="wwt_toc_meta_schema_description"><?php esc_html_e( 'Description', 'working-with-toc' ); ?></label>
+                    <textarea id="wwt_toc_meta_schema_description" name="wwt_toc_meta[schema_description]" rows="3" placeholder="<?php echo esc_attr( $schema_description_value ? '' : ( $auto_description ?: $schema_fallbacks['description'] ) ); ?>" class="widefat"><?php echo esc_textarea( $schema_description_value ); ?></textarea>
+                </div>
+                <div class="wwt-toc-meta__field">
+                    <label for="wwt_toc_meta_schema_image"><?php esc_html_e( 'Image URL', 'working-with-toc' ); ?></label>
+                    <input type="url" id="wwt_toc_meta_schema_image" name="wwt_toc_meta[schema_image]" value="<?php echo esc_attr( $schema_image_value ); ?>" placeholder="<?php echo esc_attr( $schema_image_value ? '' : ( $auto_image ?: $schema_fallbacks['image'] ) ); ?>" class="widefat" />
                 </div>
             </div>
 
@@ -305,6 +333,34 @@ class Meta_Box {
             }
         }
 
+        if ( isset( $input['schema_headline'] ) ) {
+            $headline = sanitize_text_field( wp_unslash( $input['schema_headline'] ) );
+
+            if ( '' !== $headline ) {
+                $data['schema_headline'] = $headline;
+            }
+        }
+
+        if ( isset( $input['schema_description'] ) ) {
+            $description = sanitize_textarea_field( wp_unslash( $input['schema_description'] ) );
+
+            if ( '' !== $description ) {
+                $data['schema_description'] = $description;
+            }
+        }
+
+        if ( isset( $input['schema_image'] ) ) {
+            $raw_image = wp_unslash( $input['schema_image'] );
+
+            if ( is_string( $raw_image ) ) {
+                $image = esc_url_raw( trim( $raw_image ) );
+
+                if ( '' !== $image ) {
+                    $data['schema_image'] = $image;
+                }
+            }
+        }
+
         if ( ! empty( $data ) ) {
             update_post_meta( $post_id, Settings::META_KEY, $data );
             Logger::log( 'Saved TOC meta for post ID ' . $post_id );
@@ -393,6 +449,25 @@ class Meta_Box {
         }
 
         return array_values( array_unique( $sanitised ) );
+    }
+
+    /**
+     * Generate a short description for previewing structured data.
+     */
+    protected function generate_schema_description( WP_Post $post ): string {
+        $excerpt = get_the_excerpt( $post );
+
+        if ( is_string( $excerpt ) && '' !== trim( $excerpt ) ) {
+            return wp_strip_all_tags( $excerpt );
+        }
+
+        $content = wp_strip_all_tags( $post->post_content );
+
+        if ( '' === $content ) {
+            return '';
+        }
+
+        return wp_trim_words( $content, 40, '' );
     }
 
     /**
