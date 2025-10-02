@@ -82,13 +82,31 @@ class Plugin {
      * Ensure administrators can manage the plugin settings.
      */
     public function ensure_capability(): void {
-        $role = \get_role( 'administrator' );
-
-        if ( ! $role ) {
+        if ( ! function_exists( '\wp_roles' ) ) {
             return;
         }
 
-        if ( ! $role->has_cap( Admin_Page::DEFAULT_CAPABILITY ) ) {
+        $roles = \wp_roles();
+
+        if ( ! $roles instanceof \WP_Roles ) {
+            return;
+        }
+
+        foreach ( $roles->get_names() as $role_name => $_label ) {
+            $role = $roles->get_role( $role_name );
+
+            if ( ! $role ) {
+                continue;
+            }
+
+            if ( ! $role->has_cap( 'manage_options' ) ) {
+                continue;
+            }
+
+            if ( $role->has_cap( Admin_Page::DEFAULT_CAPABILITY ) ) {
+                continue;
+            }
+
             $role->add_cap( Admin_Page::DEFAULT_CAPABILITY );
         }
     }
