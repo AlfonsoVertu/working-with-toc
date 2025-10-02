@@ -29,8 +29,21 @@ namespace Working_With_TOC {
     define( 'WWT_TOC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
     require_once WWT_TOC_PLUGIN_DIR . 'includes/class-autoloader.php';
+    require_once WWT_TOC_PLUGIN_DIR . 'includes/functions-dependencies.php';
 
     Autoloader::register();
+
+    global $wwt_toc_missing_domdocument;
+
+    if ( ! isset( $wwt_toc_missing_domdocument ) ) {
+        $wwt_toc_missing_domdocument = false;
+    }
+
+    if ( ! class_exists( '\\DOMDocument' ) ) {
+        $wwt_toc_missing_domdocument = true;
+        add_action( 'admin_notices', __NAMESPACE__ . '\\render_missing_domdocument_notice' );
+        return;
+    }
 
     function working_with_toc() {
         static $plugin = null;
