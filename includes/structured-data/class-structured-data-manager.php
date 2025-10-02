@@ -495,6 +495,30 @@ class Structured_Data_Manager {
             'mainEntityOfPage' => array( '@id' => $webpage_id ),
         );
 
+        $has_part_entry = array( '@id' => $item_list_id );
+
+        if ( isset( $product_node['hasPart'] ) && is_array( $product_node['hasPart'] ) ) {
+            $has_part = $product_node['hasPart'];
+        } elseif ( isset( $product_node['hasPart'] ) ) {
+            $has_part = array( $product_node['hasPart'] );
+        } else {
+            $has_part = array();
+        }
+
+        $already_linked = false;
+        foreach ( $has_part as $part ) {
+            if ( is_array( $part ) && isset( $part['@id'] ) && $part['@id'] === $item_list_id ) {
+                $already_linked = true;
+                break;
+            }
+        }
+
+        if ( ! $already_linked ) {
+            $has_part[] = $has_part_entry;
+        }
+
+        $product_node['hasPart'] = $has_part;
+
         if ( '' !== $values['description'] ) {
             $product_node['description'] = $values['description'];
         }
