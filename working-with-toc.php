@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: Working With TOC
- * Plugin URI:  https://wordpress.org/plugins/working-with-toc/
- * Description: Gestione avanzata dei Table of Contents con supporto DB personalizzato.
+ * Plugin Name: Working with TOC
+ * Plugin URI:   https://wordpress.org/plugins/working-with-toc/
+ * Description: Table of Contents plugin with structured data controls and Rank Math / Yoast SEO compatibility.
  * Version:     1.0.0
- * Author:      Il Tuo Nome
- * Author URI:  https://iltuosito.it
+ * Author:      Alfonso Vertucci - Working with Web
+ * Author URI:  https://workingwithweb.it/webagency
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: working-with-toc
