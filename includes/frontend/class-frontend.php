@@ -9,6 +9,8 @@ namespace Working_With_TOC\Frontend;
 
 defined( 'ABSPATH' ) || exit;
 
+use DOMDocument;
+use DOMXPath;
 use WP_Post;
 use Working_With_TOC\Logger;
 use Working_With_TOC\Heading_Parser;
@@ -140,9 +142,10 @@ class Frontend {
             return $content;
         }
 
-        $insertion_pattern = '#(<h[2-5][^>]*>.*?</h[2-5]>)#is';
-        if ( preg_match( $insertion_pattern, $content ) ) {
-            return preg_replace( $insertion_pattern, '$1' . $toc_markup, $content, 1 );
+        $content_with_inserted_toc = $this->insert_toc_after_first_heading( $content, $toc_markup );
+
+        if ( null !== $content_with_inserted_toc ) {
+            return $content_with_inserted_toc;
         }
 
         return $content . $toc_markup;
@@ -184,5 +187,70 @@ class Frontend {
         );
 
         return $markup;
+    }
+
+    /**
+     * Insert the TOC markup immediately after the first heading (h2-h5).
+     *
+     * @param string $content    Parsed post content.
+     * @param string $toc_markup TOC HTML markup.
+     *
+     * @return string|null Updated content when a heading is found, otherwise null.
+     */
+    protected function insert_toc_after_first_heading( string $content, string $toc_markup ): ?string {
+        $dom       = new DOMDocument();
+        $previous  = libxml_use_internal_errors( true );
+        $loaded    = $dom->loadHTML( '<?xml encoding="utf-8"?>' . $content );
+        libxml_clear_errors();
+        libxml_use_internal_errors( $previous );
+
+        if ( ! $loaded ) {
+            return null;
+        }
+
+        $xpath   = new DOMXPath( $dom );
+        $headings = $xpath->query( '//h2 | //h3 | //h4 | //h5' );
+
+        if ( ! $headings instanceof \DOMNodeList || 0 === $headings->length ) {
+            return null;
+        }
+
+        $heading = $headings->item( 0 );
+
+        if ( ! $heading ) {
+            return null;
+        }
+
+        $fragment = $dom->createDocumentFragment();
+
+        if ( ! $fragment->appendXML( $toc_markup ) ) {
+            return null;
+        }
+
+        $parent = $heading->parentNode;
+
+        if ( ! $parent ) {
+            return null;
+        }
+
+        if ( $heading->nextSibling ) {
+            $parent->insertBefore( $fragment, $heading->nextSibling );
+        } else {
+            $parent->appendChild( $fragment );
+        }
+
+        $body = $dom->getElementsByTagName( 'body' )->item( 0 );
+
+        if ( $body ) {
+            $updated = '';
+
+            foreach ( $body->childNodes as $child ) {
+                $updated .= $dom->saveHTML( $child );
+            }
+
+            return $updated;
+        }
+
+        return $dom->saveHTML();
     }
 }
