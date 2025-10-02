@@ -155,15 +155,35 @@ class Structured_Data_Manager {
             $data = array();
         }
 
+        if ( ! isset( $data['@graph'] ) ) {
+            $data['@graph'] = array();
+        } elseif ( ! is_array( $data['@graph'] ) ) {
+            $data['@graph'] = array( $data['@graph'] );
+        } else {
+            $graph_keys        = array_keys( $data['@graph'] );
+            $has_non_int_keys  = array_filter(
+                $graph_keys,
+                static function ( $key ) {
+                    return ! is_int( $key );
+                }
+            );
+
+            if ( ! empty( $has_non_int_keys ) ) {
+                $data['@graph'] = array( $data['@graph'] );
+            } else {
+                $data['@graph'] = array_values( $data['@graph'] );
+            }
+        }
+
         $item_list    = $schema['item_list'];
         $item_list_id = is_string( $item_list['@id'] ?? null ) ? $item_list['@id'] : '';
 
         if ( $item_list_id ) {
-            $parent_ids = $this->add_item_list_reference_to_schema_nodes( $data, $item_list_id );
+            $parent_ids = $this->add_item_list_reference_to_schema_nodes( $data['@graph'], $item_list_id );
             $item_list  = $this->link_item_list_to_parents( $item_list, $parent_ids );
         }
 
-        $data['wwtToc'] = $item_list;
+        $data['@graph'][] = $item_list;
 
         Logger::log( 'Merged TOC schema into Rank Math graph for post ID ' . $post->ID );
 
