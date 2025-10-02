@@ -304,6 +304,8 @@ class Structured_Data_Manager {
         $organization     = $this->settings->get_organization_settings();
         $organization_url = $organization['url'] ?: home_url( '/' );
         $organization_id  = trailingslashit( $organization_url ) . '#organization';
+        $website_url      = home_url( '/' );
+        $website_id       = trailingslashit( $website_url ) . '#website';
         $webpage_id       = $permalink . '#webpage';
         $breadcrumb_id    = $permalink . '#breadcrumb';
         $image_id         = $permalink . '#primaryimage';
@@ -327,6 +329,16 @@ class Structured_Data_Manager {
 
         $graph[] = $organization_node;
 
+        $website_node = array(
+            '@type'     => 'WebSite',
+            '@id'       => $website_id,
+            'url'       => $website_url,
+            'name'      => get_bloginfo( 'name' ),
+            'publisher' => array( '@id' => $organization_id ),
+        );
+
+        $graph[] = $website_node;
+
         $breadcrumb = $this->build_breadcrumb_list( $post, $breadcrumb_id );
 
         $webpage = array(
@@ -334,7 +346,7 @@ class Structured_Data_Manager {
             '@id'        => $webpage_id,
             'url'        => $permalink,
             'name'       => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
-            'isPartOf'   => array( '@id' => $organization_id ),
+            'isPartOf'   => array( '@id' => $website_id ),
             'breadcrumb' => array( '@id' => $breadcrumb_id ),
         );
 
@@ -353,7 +365,7 @@ class Structured_Data_Manager {
         }
 
         if ( 'product' === $post->post_type ) {
-            $product_node = $this->build_product_node( $post, $values, $webpage_id, $organization_id, $item_list_id, $image_id, $permalink );
+            $product_node = $this->build_product_node( $post, $values, $webpage_id, $website_id, $item_list_id, $image_id, $permalink );
 
             if ( ! empty( $product_node ) ) {
                 $graph[] = $product_node;
@@ -365,7 +377,7 @@ class Structured_Data_Manager {
                 '@id'              => $article_id,
                 'headline'         => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
                 'mainEntityOfPage' => array( '@id' => $webpage_id ),
-                'isPartOf'         => array( '@id' => $organization_id ),
+                'isPartOf'         => array( '@id' => $website_id ),
                 'hasPart'          => array( array( '@id' => $item_list_id ) ),
             );
 
@@ -430,14 +442,14 @@ class Structured_Data_Manager {
      * @param WP_Post             $post            Product post object.
      * @param array<string,string> $values         Resolved schema values.
      * @param string              $webpage_id     WebPage node ID.
-     * @param string              $organization_id Organization node ID.
+     * @param string              $website_id     WebSite node ID.
      * @param string              $item_list_id   ItemList node ID.
      * @param string              $image_id       Image node ID.
      * @param string              $permalink      Product permalink.
      *
      * @return array<string,mixed>
      */
-    protected function build_product_node( WP_Post $post, array $values, string $webpage_id, string $organization_id, string $item_list_id, string $image_id, string $permalink ): array {
+    protected function build_product_node( WP_Post $post, array $values, string $webpage_id, string $website_id, string $item_list_id, string $image_id, string $permalink ): array {
         $product_id = $permalink . '#product';
 
         $product_node = array(
@@ -445,7 +457,7 @@ class Structured_Data_Manager {
             '@id'              => $product_id,
             'name'             => wp_strip_all_tags( get_the_title( $post ) ),
             'mainEntityOfPage' => array( '@id' => $webpage_id ),
-            'isPartOf'         => array( '@id' => $organization_id ),
+            'isPartOf'         => array( '@id' => $website_id ),
             'hasPart'          => array( array( '@id' => $item_list_id ) ),
         );
 
