@@ -58,6 +58,7 @@ class Plugin {
 
         add_action( 'init', array( $this, 'load_textdomain' ) );
         add_action( 'init', array( $this, 'ensure_capability' ) );
+        add_action( 'init', array( $this->frontend, 'register_shortcode' ) );
         add_action( 'admin_init', array( $this->settings, 'register' ) );
         add_action( 'admin_menu', array( $this->admin, 'register_menu' ) );
         add_action( 'admin_enqueue_scripts', array( $this->admin, 'enqueue_assets' ) );
