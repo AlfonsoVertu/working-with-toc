@@ -83,6 +83,23 @@
     color: #52616b;
 }
 
+.wwt-toc-toggle-group {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.wwt-toc-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.wwt-toc-toggle-label {
+    font-weight: 600;
+    color: #374151;
+}
+
 .wwt-switch {
     position: relative;
     display: inline-block;
