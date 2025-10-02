@@ -103,7 +103,12 @@ class Meta_Box {
                 continue;
             }
 
-            $sanitised = sanitize_hex_color( $meta[ $key ] );
+            $value = $meta[ $key ];
+            if ( ! is_string( $value ) ) {
+                continue;
+            }
+
+            $sanitised = sanitize_hex_color( $value );
             if ( $sanitised ) {
                 $colors[ $key ] = $sanitised;
             }
@@ -249,7 +254,16 @@ class Meta_Box {
         }
 
         foreach ( array( 'title_color', 'title_background_color', 'background_color', 'text_color', 'link_color' ) as $field ) {
-            $value = isset( $input[ $field ] ) ? sanitize_hex_color( wp_unslash( $input[ $field ] ) ) : '';
+            if ( ! isset( $input[ $field ] ) ) {
+                continue;
+            }
+
+            $raw_value = wp_unslash( $input[ $field ] );
+            if ( ! is_string( $raw_value ) ) {
+                continue;
+            }
+
+            $value = sanitize_hex_color( $raw_value );
 
             if ( ! $value ) {
                 continue;
