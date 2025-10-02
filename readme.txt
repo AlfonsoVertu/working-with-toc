@@ -8,6 +8,8 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
+Create a responsive, sticky table of contents with SEO-ready structured data.
+
 == Description ==
 Working with TOC creates a polished, mobile-friendly table of contents (TOC) for articles, pages, and WooCommerce products.
 The plugin respects WordPress coding conventions, splits responsibilities across dedicated folders, and integrates with Rank Math and Yoast SEO.
