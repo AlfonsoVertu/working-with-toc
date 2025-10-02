@@ -98,7 +98,19 @@ class Frontend {
      * @return string
      */
     public function inject_toc( string $content ): string {
-        if ( ! is_singular() || ! in_the_loop() || ! is_main_query() ) {
+        if ( ! is_singular() || ! is_main_query() ) {
+            return $content;
+        }
+
+        if ( is_feed() ) {
+            return $content;
+        }
+
+        if ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) {
+            return $content;
+        }
+
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
             return $content;
         }
 
