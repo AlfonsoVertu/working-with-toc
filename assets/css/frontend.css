@@ -14,9 +14,9 @@
     top: auto;
     width: min(420px, calc(100vw - 3rem));
     margin: 0;
-    background-color: var(--wwt-toc-bg);
+    background-color: var(--wwt-toc-bg) !important;
     background-image: radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 55%);
-    color: var(--wwt-toc-text);
+    color: var(--wwt-toc-text) !important;
     border-radius: 20px;
     border: 1px solid rgba(148, 163, 184, 0.28);
     box-shadow: 0 28px 55px rgba(15, 23, 42, 0.4);
@@ -64,10 +64,10 @@
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    background: var(--wwt-toc-title-bg);
+    background: var(--wwt-toc-title-bg) !important;
     border: none;
     border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-    color: var(--wwt-toc-title-color);
+    color: var(--wwt-toc-title-color) !important;
     padding: 1rem 1.25rem;
     font-size: 1.05rem;
     font-weight: 600;

@@ -195,25 +195,63 @@ class Frontend {
             ? $preferences['title']
             : __( 'Indice dei contenuti', 'working-with-toc' );
 
-        $attributes = $this->build_container_attributes( $preferences, $post_id );
+        $container_id         = $this->get_container_id( $post_id );
+        $toggle_id            = $container_id . '-toggle';
+        $title_id             = $container_id . '-title';
+        $content_id           = $container_id . '-content';
+        $container_attributes = $this->build_container_attributes( $preferences, $post_id );
+        $toggle_attributes    = $this->stringify_attributes(
+            array(
+                'id'              => $toggle_id,
+                'class'           => 'wwt-toc-toggle',
+                'type'            => 'button',
+                'aria-expanded'   => 'true',
+                'aria-controls'   => $content_id,
+                'aria-labelledby' => $title_id,
+            )
+        );
+        $label_attributes     = $this->stringify_attributes(
+            array(
+                'id'    => $title_id,
+                'class' => 'wwt-toc-label',
+            )
+        );
+        $content_attributes   = $this->stringify_attributes(
+            array(
+                'id'              => $content_id,
+                'class'           => 'wwt-toc-content',
+                'aria-labelledby' => $title_id,
+            )
+        );
 
-        return sprintf(
-            '<div %4$s>' .
-                '<button class="wwt-toc-toggle" type="button" aria-expanded="true">' .
-                    '<span class="wwt-toc-label">%1$s</span>' .
+        $style_override = $this->build_custom_title_style( $preferences, $toggle_id );
+
+        $markup = sprintf(
+            '<div %1$s>' .
+                '<button %2$s>' .
+                    '<span %3$s>%4$s</span>' .
                     '<span class="wwt-toc-icon" aria-hidden="true"></span>' .
                 '</button>' .
-                '<div class="wwt-toc-content">' .
-                    '<nav class="wwt-toc-nav" aria-label="%2$s">' .
-                        '<ol class="wwt-toc-list">%3$s</ol>' .
+                '<div %5$s>' .
+                    '<nav class="wwt-toc-nav" aria-label="%6$s">' .
+                        '<ol class="wwt-toc-list">%7$s</ol>' .
                     '</nav>' .
                 '</div>' .
             '</div>',
+            $container_attributes,
+            $toggle_attributes,
+            $label_attributes,
             esc_html( $label ),
+            $content_attributes,
             esc_attr( $label ),
-            $items,
-            $attributes
+            $items
         );
+
+        if ( '' !== $style_override ) {
+            $markup = $style_override . "\n" . $markup;
+        }
+
+        return $markup;
     }
 
     /**
@@ -282,7 +320,7 @@ class Frontend {
      */
     protected function build_container_attributes( array $preferences, int $post_id ): string {
         $post_id = absint( $post_id );
-        $id      = $post_id > 0 ? 'wwt-toc-' . $post_id : 'wwt-toc';
+        $id      = $this->get_container_id( $post_id );
 
         $horizontal_choices = $this->settings->get_horizontal_alignment_choices();
         $vertical_choices   = $this->settings->get_vertical_alignment_choices();
@@ -327,6 +365,26 @@ class Frontend {
             $attributes[ 'data-' . $data_key ] = $preferences[ $preference_key ];
         }
 
+        return $this->stringify_attributes( $attributes );
+    }
+
+    /**
+     * Generate a unique container ID based on the post ID.
+     *
+     * @param int $post_id Current post ID.
+     */
+    protected function get_container_id( int $post_id ): string {
+        $post_id = absint( $post_id );
+
+        return $post_id > 0 ? 'wwt-toc-' . $post_id : 'wwt-toc';
+    }
+
+    /**
+     * Convert an attribute array into a HTML attribute string.
+     *
+     * @param array<string,string> $attributes Attributes list.
+     */
+    protected function stringify_attributes( array $attributes ): string {
         $parts = array();
 
         foreach ( $attributes as $name => $value ) {
@@ -338,6 +396,41 @@ class Frontend {
         }
 
         return implode( ' ', $parts );
+    }
+
+    /**
+     * Build an inline style block that enforces title colors when custom values are used.
+     *
+     * @param array<string,mixed> $preferences Style preferences.
+     * @param string              $toggle_id   Toggle element ID.
+     */
+    protected function build_custom_title_style( array $preferences, string $toggle_id ): string {
+        if ( empty( $preferences['has_custom_title_colors'] ) ) {
+            return '';
+        }
+
+        $rules = array();
+
+        if ( ! empty( $preferences['title_background_color'] ) ) {
+            $rules[] = sprintf( 'background:%s !important;', $preferences['title_background_color'] );
+        }
+
+        if ( ! empty( $preferences['title_color'] ) ) {
+            $rules[] = sprintf( 'color:%s !important;', $preferences['title_color'] );
+        }
+
+        if ( empty( $rules ) ) {
+            return '';
+        }
+
+        $style_id = $toggle_id . '-style';
+
+        return sprintf(
+            '<style id="%1$s">#%2$s{%3$s}</style>',
+            esc_attr( $style_id ),
+            esc_attr( $toggle_id ),
+            esc_html( implode( '', $rules ) )
+        );
     }
 
     /**
