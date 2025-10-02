@@ -124,16 +124,23 @@ class Frontend {
             return $content;
         }
 
-        $result   = Heading_Parser::parse( $content );
-        $headings = $result['headings'];
-        $content  = $result['content'];
+        $preferences = $this->settings->get_post_preferences( $post );
+
+        $result            = Heading_Parser::parse( $content );
+        $original_headings = $result['headings'];
+        $headings          = $this->filter_headings( $original_headings, $preferences['excluded_headings'] );
+        $content           = $result['content'];
 
         if ( empty( $headings ) ) {
-            Logger::log( 'No headings found for TOC.' );
+            if ( empty( $original_headings ) ) {
+                Logger::log( 'No headings found for TOC.' );
+            } else {
+                Logger::log( 'All headings excluded from TOC for post ID ' . $post->ID );
+            }
             return $content;
         }
 
-        $toc_markup = $this->build_toc_markup( $headings );
+        $toc_markup = $this->build_toc_markup( $headings, $preferences );
 
         $shortcode_present = false;
 
@@ -170,7 +177,7 @@ class Frontend {
      *
      * @return string
      */
-    protected function build_toc_markup( array $headings ): string {
+    protected function build_toc_markup( array $headings, array $preferences ): string {
         $items = '';
         foreach ( $headings as $heading ) {
             $indent = max( 0, $heading['level'] - 2 );
@@ -182,10 +189,14 @@ class Frontend {
             );
         }
 
-        $label = __( 'Indice dei contenuti', 'working-with-toc' );
+        $label = isset( $preferences['title'] ) && '' !== trim( $preferences['title'] )
+            ? $preferences['title']
+            : __( 'Indice dei contenuti', 'working-with-toc' );
+
+        $style_attribute = $this->build_inline_styles( $preferences );
 
         $markup = sprintf(
-            '<div class="wwt-toc-container" data-wwt-toc="true" data-expanded="false">
+            '<div class="wwt-toc-container" data-wwt-toc="true" data-expanded="false"%4$s>
                 <button class="wwt-toc-toggle" type="button" aria-expanded="false">
                     <span class="wwt-toc-label">%1$s</span>
                     <span class="wwt-toc-icon" aria-hidden="true"></span>
@@ -198,10 +209,71 @@ class Frontend {
             </div>',
             esc_html( $label ),
             esc_attr( $label ),
-            $items
+            $items,
+            $style_attribute
         );
 
         return $markup;
+    }
+
+    /**
+     * Filter headings according to the excluded list.
+     *
+     * @param array<int,array{title:string,id:string,level:int}> $headings Headings list.
+     * @param array<int,string>                                  $excluded IDs to exclude.
+     *
+     * @return array<int,array{title:string,id:string,level:int}>
+     */
+    protected function filter_headings( array $headings, array $excluded ): array {
+        if ( empty( $excluded ) ) {
+            return $headings;
+        }
+
+        $map = array_fill_keys( $excluded, true );
+
+        return array_values(
+            array_filter(
+                $headings,
+                static function ( $heading ) use ( $map ) {
+                    if ( ! isset( $heading['id'] ) || ! is_string( $heading['id'] ) ) {
+                        return true;
+                    }
+
+                    return ! isset( $map[ $heading['id'] ] );
+                }
+            )
+        );
+    }
+
+    /**
+     * Build inline style attribute with CSS custom properties.
+     *
+     * @param array<string,mixed> $preferences Style preferences.
+     */
+    protected function build_inline_styles( array $preferences ): string {
+        $styles = array(
+            '--wwt-toc-bg'          => $preferences['background_color'] ?? '',
+            '--wwt-toc-text'        => $preferences['text_color'] ?? '',
+            '--wwt-toc-link'        => $preferences['link_color'] ?? '',
+            '--wwt-toc-title-bg'    => $preferences['title_background_color'] ?? '',
+            '--wwt-toc-title-color' => $preferences['title_color'] ?? '',
+        );
+
+        $parts = array();
+
+        foreach ( $styles as $property => $value ) {
+            if ( is_string( $value ) && '' !== $value ) {
+                $parts[] = $property . ':' . $value;
+            }
+        }
+
+        if ( empty( $parts ) ) {
+            return '';
+        }
+
+        $style = implode( ';', $parts ) . ';';
+
+        return ' style="' . esc_attr( $style ) . '"';
     }
 
     /**

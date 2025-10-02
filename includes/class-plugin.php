@@ -10,6 +10,7 @@ namespace Working_With_TOC;
 defined( 'ABSPATH' ) || exit;
 
 use Working_With_TOC\Admin\Admin_Page;
+use Working_With_TOC\Admin\Meta_Box;
 use Working_With_TOC\Frontend\Frontend;
 use Working_With_TOC\Heading_Parser;
 use Working_With_TOC\Structured_Data\Structured_Data_Manager;
@@ -48,6 +49,13 @@ class Plugin {
     protected $structured_data;
 
     /**
+     * Post editor meta box handler.
+     *
+     * @var Meta_Box
+     */
+    protected $meta_box;
+
+    /**
      * Initialize plugin components.
      */
     public function init(): void {
@@ -55,6 +63,7 @@ class Plugin {
         $this->admin           = new Admin_Page( $this->settings );
         $this->frontend        = new Frontend( $this->settings );
         $this->structured_data = new Structured_Data_Manager( $this->settings, $this->frontend );
+        $this->meta_box        = new Meta_Box( $this->settings );
 
         add_action( 'init', array( $this, 'load_textdomain' ) );
         add_action( 'init', array( $this, 'ensure_capability' ) );
@@ -62,9 +71,12 @@ class Plugin {
         add_action( 'admin_init', array( $this->settings, 'register' ) );
         add_action( 'admin_menu', array( $this->admin, 'register_menu' ) );
         add_action( 'admin_enqueue_scripts', array( $this->admin, 'enqueue_assets' ) );
+        add_action( 'admin_enqueue_scripts', array( $this->meta_box, 'enqueue_assets' ) );
         add_action( 'wp_enqueue_scripts', array( $this->frontend, 'enqueue_assets' ) );
         add_filter( 'the_content', array( $this->frontend, 'inject_toc' ), 15 );
         add_action( 'wp_head', array( $this->structured_data, 'output_structured_data' ) );
+        add_action( 'add_meta_boxes', array( $this->meta_box, 'register' ) );
+        add_action( 'save_post', array( $this->meta_box, 'save' ), 10, 2 );
 
         // Rank Math compatibility hooks.
         add_filter( 'rank_math/researches/toc_plugins', array( $this, 'register_rank_math_plugin' ) );

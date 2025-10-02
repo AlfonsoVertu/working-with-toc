@@ -125,67 +125,82 @@ class Admin_Page {
                 <?php
                 settings_fields( 'wwt_toc_settings_group' );
                 ?>
+                <?php
+                $cards = array(
+                    'posts'    => array(
+                        'heading'         => __( 'Articoli', 'working-with-toc' ),
+                        'description'     => __( 'Abilita la TOC e i dati strutturati per i post standard.', 'working-with-toc' ),
+                        'enable_key'      => 'enable_posts',
+                        'structured_key'  => 'structured_posts',
+                    ),
+                    'pages'    => array(
+                        'heading'         => __( 'Pagine', 'working-with-toc' ),
+                        'description'     => __( 'Attiva la TOC per le pagine statiche del sito.', 'working-with-toc' ),
+                        'enable_key'      => 'enable_pages',
+                        'structured_key'  => 'structured_pages',
+                    ),
+                    'products' => array(
+                        'heading'         => __( 'Prodotti', 'working-with-toc' ),
+                        'description'     => __( 'Integrazione con WooCommerce per schede prodotto complete.', 'working-with-toc' ),
+                        'enable_key'      => 'enable_products',
+                        'structured_key'  => 'structured_products',
+                    ),
+                );
+
+                $color_labels = array(
+                    'title_color'            => __( 'Colore del titolo', 'working-with-toc' ),
+                    'title_background_color' => __( 'Sfondo del titolo', 'working-with-toc' ),
+                    'background_color'       => __( 'Sfondo del box', 'working-with-toc' ),
+                    'text_color'             => __( 'Colore del testo', 'working-with-toc' ),
+                    'link_color'             => __( 'Colore dei link', 'working-with-toc' ),
+                );
+                ?>
                 <div class="wwt-toc-card-grid">
-                    <div class="wwt-toc-card">
-                        <h2><?php esc_html_e( 'Articoli', 'working-with-toc' ); ?></h2>
-                        <p><?php esc_html_e( 'Abilita la TOC e i dati strutturati per i post standard.', 'working-with-toc' ); ?></p>
-                        <div class="wwt-toc-toggle-group">
-                            <div class="wwt-toc-toggle-row">
-                                <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Indice dei contenuti', 'working-with-toc' ); ?></span>
-                                <label class="wwt-switch">
-                                    <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[enable_posts]" value="1" <?php checked( $settings['enable_posts'] ); ?>>
-                                    <span class="wwt-slider"></span>
-                                </label>
+                    <?php foreach ( $cards as $prefix => $card ) :
+                        $title_field_name = sprintf( '%s[%s_title]', Settings::OPTION_NAME, $prefix );
+                        $title_field_id   = sprintf( 'wwt_toc_%s_title', $prefix );
+                        ?>
+                        <div class="wwt-toc-card">
+                            <h2><?php echo esc_html( $card['heading'] ); ?></h2>
+                            <p><?php echo esc_html( $card['description'] ); ?></p>
+                            <div class="wwt-toc-toggle-group">
+                                <div class="wwt-toc-toggle-row">
+                                    <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Indice dei contenuti', 'working-with-toc' ); ?></span>
+                                    <label class="wwt-switch">
+                                        <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $card['enable_key'] ); ?>]" value="1" <?php checked( $settings[ $card['enable_key'] ] ); ?>>
+                                        <span class="wwt-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="wwt-toc-toggle-row">
+                                    <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Dati strutturati TOC', 'working-with-toc' ); ?></span>
+                                    <label class="wwt-switch">
+                                        <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $card['structured_key'] ); ?>]" value="1" <?php checked( $settings[ $card['structured_key'] ] ); ?>>
+                                        <span class="wwt-slider"></span>
+                                    </label>
+                                </div>
                             </div>
-                            <div class="wwt-toc-toggle-row">
-                                <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Dati strutturati TOC', 'working-with-toc' ); ?></span>
-                                <label class="wwt-switch">
-                                    <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[structured_posts]" value="1" <?php checked( $settings['structured_posts'] ); ?>>
-                                    <span class="wwt-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="wwt-toc-card">
-                        <h2><?php esc_html_e( 'Pagine', 'working-with-toc' ); ?></h2>
-                        <p><?php esc_html_e( 'Attiva la TOC per le pagine statiche del sito.', 'working-with-toc' ); ?></p>
-                        <div class="wwt-toc-toggle-group">
-                            <div class="wwt-toc-toggle-row">
-                                <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Indice dei contenuti', 'working-with-toc' ); ?></span>
-                                <label class="wwt-switch">
-                                    <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[enable_pages]" value="1" <?php checked( $settings['enable_pages'] ); ?>>
-                                    <span class="wwt-slider"></span>
-                                </label>
-                            </div>
-                            <div class="wwt-toc-toggle-row">
-                                <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Dati strutturati TOC', 'working-with-toc' ); ?></span>
-                                <label class="wwt-switch">
-                                    <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[structured_pages]" value="1" <?php checked( $settings['structured_pages'] ); ?>>
-                                    <span class="wwt-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="wwt-toc-card">
-                        <h2><?php esc_html_e( 'Prodotti', 'working-with-toc' ); ?></h2>
-                        <p><?php esc_html_e( 'Integrazione con WooCommerce per schede prodotto complete.', 'working-with-toc' ); ?></p>
-                        <div class="wwt-toc-toggle-group">
-                            <div class="wwt-toc-toggle-row">
-                                <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Indice dei contenuti', 'working-with-toc' ); ?></span>
-                                <label class="wwt-switch">
-                                    <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[enable_products]" value="1" <?php checked( $settings['enable_products'] ); ?>>
-                                    <span class="wwt-slider"></span>
-                                </label>
-                            </div>
-                            <div class="wwt-toc-toggle-row">
-                                <span class="wwt-toc-toggle-label"><?php esc_html_e( 'Dati strutturati TOC', 'working-with-toc' ); ?></span>
-                                <label class="wwt-switch">
-                                    <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[structured_products]" value="1" <?php checked( $settings['structured_products'] ); ?>>
-                                    <span class="wwt-slider"></span>
-                                </label>
+
+                            <div class="wwt-toc-style">
+                                <h3 class="wwt-toc-style__title"><?php esc_html_e( 'Stile predefinito', 'working-with-toc' ); ?></h3>
+                                <p class="wwt-toc-style__hint"><?php esc_html_e( 'Imposta titolo e colori di base per l\'indice di questo tipo di contenuto.', 'working-with-toc' ); ?></p>
+                                <div class="wwt-toc-style__field">
+                                    <label for="<?php echo esc_attr( $title_field_id ); ?>"><?php esc_html_e( 'Titolo della TOC', 'working-with-toc' ); ?></label>
+                                    <input type="text" id="<?php echo esc_attr( $title_field_id ); ?>" name="<?php echo esc_attr( $title_field_name ); ?>" value="<?php echo esc_attr( $settings[ $prefix . '_title' ] ); ?>" class="widefat" />
+                                </div>
+                                <div class="wwt-toc-style__colors">
+                                    <?php foreach ( $color_labels as $field => $label ) :
+                                        $field_name = sprintf( '%s[%s_%s]', Settings::OPTION_NAME, $prefix, $field );
+                                        $field_id   = sprintf( 'wwt_toc_%s_%s', $prefix, $field );
+                                        ?>
+                                        <div class="wwt-toc-style__color">
+                                            <label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( $label ); ?></label>
+                                            <input type="color" id="<?php echo esc_attr( $field_id ); ?>" name="<?php echo esc_attr( $field_name ); ?>" value="<?php echo esc_attr( $settings[ $prefix . '_' . $field ] ); ?>" />
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
 
                 <div class="wwt-toc-submit">
