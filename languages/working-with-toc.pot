@@ -1,0 +1,226 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Working with TOC 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/working-with-toc/\n"
+"POT-Creation-Date: 2024-05-30 00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: ChatGPT\n"
+"X-Domain: working-with-toc\n"
+
+#: includes/admin/class-admin-page.php:67 includes/admin/class-admin-page.php:68 includes/admin/class-admin-page.php:121 includes/class-plugin.php:147 includes/class-settings.php:74
+msgid "Working with TOC"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:75
+msgid "Activated"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:76
+msgid "Deactivated"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:122
+msgid "Manage structured data for posts, products, and pages."
+msgstr ""
+
+#: includes/admin/class-admin-page.php:131
+msgid "Posts"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:132
+msgid "Enable the TOC and structured data for standard posts."
+msgstr ""
+
+#: includes/admin/class-admin-page.php:137
+msgid "Pages"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:138
+msgid "Enable the TOC for the site's static pages."
+msgstr ""
+
+#: includes/admin/class-admin-page.php:143
+msgid "Products"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:144
+msgid "Integrate with WooCommerce for complete product pages."
+msgstr ""
+
+#: includes/admin/class-admin-page.php:151 includes/admin/class-meta-box.php:499
+msgid "Title color"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:152 includes/admin/class-meta-box.php:501
+msgid "Title background"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:153 includes/admin/class-meta-box.php:503
+msgid "Container background"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:154 includes/admin/class-meta-box.php:505
+msgid "Text color"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:155 includes/admin/class-meta-box.php:507
+msgid "Link color"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:159 includes/admin/class-meta-box.php:139
+msgid "Left"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:160 includes/admin/class-meta-box.php:140
+msgid "Center"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:161 includes/admin/class-meta-box.php:141
+msgid "Right"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:165 includes/admin/class-meta-box.php:145
+msgid "Top"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:166 includes/admin/class-meta-box.php:146
+msgid "Bottom"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:189 includes/admin/class-meta-box.php:45 includes/class-settings.php:75 includes/frontend/class-frontend.php:205 includes/structured-data/class-structured-data-manager.php:263
+msgid "Table of contents"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:196
+msgid "TOC structured data"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:205
+msgid "Default style"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:206
+msgid "Set the title and base colors for the table of contents on this content type."
+msgstr ""
+
+#: includes/admin/class-admin-page.php:208 includes/admin/class-meta-box.php:156
+msgid "TOC title"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:224 includes/admin/class-meta-box.php:186
+msgid "Horizontal position"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:232 includes/admin/class-meta-box.php:194
+msgid "Vertical position"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:263
+msgid "Save settings"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:243
+msgid "Base structured data defaults"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:244
+msgid "These values are used when the automatic headline, description, or image cannot be detected."
+msgstr ""
+
+#: includes/admin/class-admin-page.php:246
+msgid "Fallback headline"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:250
+msgid "Fallback description"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:254
+msgid "Fallback image URL"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:267
+msgid "Organization structured data"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:268
+msgid "Customise the organisation details used for fallback structured data output."
+msgstr ""
+
+#: includes/admin/class-admin-page.php:271
+msgid "Organization name"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:275
+msgid "Organization URL"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:279
+msgid "Logo URL"
+msgstr ""
+
+#: includes/admin/class-admin-page.php:285
+msgid "Compatible with Rank Math and Yoast SEO. Enable WordPress debug mode to log plugin events."
+msgstr ""
+
+#: includes/admin/class-meta-box.php:153
+msgid "Customize the table of contents for this entry. The plugin's global settings apply when fields are left unchanged."
+msgstr ""
+
+#: includes/admin/class-meta-box.php:159 includes/admin/class-meta-box.php:174
+msgid "Reset"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:164
+msgid "Custom colors"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:183
+msgid "TOC placement"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:205
+msgid "Structured data overrides"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:206
+msgid "Update the fallback structured data values used when no SEO plugin provides a graph. Leave fields blank to use the automatic values."
+msgstr ""
+
+#: includes/admin/class-meta-box.php:208
+msgid "Headline"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:212
+msgid "Description"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:216
+msgid "Image URL"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:222
+msgid "Included headings"
+msgstr ""
+
+#: includes/admin/class-meta-box.php:237
+msgid "Deselect the headings you do not want to display in the table of contents."
+msgstr ""
+
+#: includes/admin/class-meta-box.php:239
+msgid "Add headings (H2-H6) to the content and save to generate the table of contents automatically."
+msgstr ""
+
+#: includes/admin/class-meta-box.php:509
+msgid "Color"
+msgstr ""
+
+#: includes/frontend/class-frontend.php:256
+msgid "Toggle table of contents visibility"
+msgstr ""
+
+#: includes/functions-dependencies.php:33
+msgid "Working with TOC requires the PHP DOM extension. Please enable the DOM extension to use the plugin."
+msgstr ""
