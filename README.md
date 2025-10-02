@@ -23,6 +23,14 @@ La configurazione viene salvata attraverso le normali opzioni e i meta di WordPr
 - Output JSON-LD compatibile basato su `ItemList` per articoli, pagine e prodotti, integrato nel grafo schema di Yoast SEO e riconosciuto da Rank Math.
 - Logging condizionato sul flag `WP_DEBUG` per agevolare il debug senza inquinare l'ambiente di produzione.
 
+## Screenshot
+
+![Sticky accordion TOC displayed on the frontend](assets/images/screeshort-1.png)
+
+![Settings page with post-type specific toggles](assets/images/assets/screenshot-2.png)
+
+![Organization structured data defaults configured in the admin](assets/images/screenshot-3.png)
+
 ## Struttura del plugin
 
 ```

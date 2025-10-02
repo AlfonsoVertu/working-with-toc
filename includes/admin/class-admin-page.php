@@ -60,6 +60,29 @@ class Admin_Page {
     }
 
     /**
+     * Retrieve plugin metadata for the footer.
+     */
+    protected function get_plugin_metadata(): array {
+        if ( ! function_exists( 'get_plugin_data' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $raw_data = get_plugin_data( WWT_TOC_PLUGIN_FILE, false, false );
+
+        return array(
+            'name'         => $raw_data['Name'] ?? __( 'Working with TOC', 'working-with-toc' ),
+            'description'  => isset( $raw_data['Description'] ) ? wp_strip_all_tags( $raw_data['Description'] ) : '',
+            'version'      => $raw_data['Version'] ?? WWTOC_VERSION,
+            'author'       => $raw_data['AuthorName'] ?? '',
+            'author_url'   => $raw_data['AuthorURI'] ?? '',
+            'plugin_url'   => $raw_data['PluginURI'] ?? '',
+            'license'      => $raw_data['License'] ?? 'GPLv2 or later',
+            'requires_wp'  => $raw_data['RequiresWP'] ?? '',
+            'requires_php' => $raw_data['RequiresPHP'] ?? '',
+        );
+    }
+
+    /**
      * Register menu item.
      */
     public function register_menu(): void {
@@ -69,7 +92,7 @@ class Admin_Page {
             $this->capability,
             'working-with-toc',
             array( $this, 'render_page' ),
-            'dashicons-list-view'
+            WWT_TOC_PLUGIN_URL . 'assets/images/www-logo.png'
         );
     }
 
@@ -115,6 +138,8 @@ class Admin_Page {
         }
 
         $settings = $this->settings->get_settings();
+        $metadata = $this->get_plugin_metadata();
+        $logo_url = WWT_TOC_PLUGIN_URL . 'assets/images/www-logo.png';
         Logger::log( 'Rendering settings page.' );
         ?>
         <div class="wrap wwt-toc-admin">
@@ -282,7 +307,37 @@ class Admin_Page {
                 </div>
             </section>
             <footer class="wwt-toc-footer">
-                <p><?php esc_html_e( 'Compatible with Rank Math and Yoast SEO. Enable WordPress debug mode to log plugin events.', 'working-with-toc' ); ?></p>
+                <div class="wwt-toc-footer__branding">
+                    <img class="wwt-toc-footer__logo" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Working with Web logo', 'working-with-toc' ); ?>" />
+                    <div class="wwt-toc-footer__summary">
+                        <h3 class="wwt-toc-footer__title"><?php echo esc_html( $metadata['name'] ); ?></h3>
+                        <?php if ( '' !== $metadata['description'] ) : ?>
+                            <p class="wwt-toc-footer__description"><?php echo esc_html( $metadata['description'] ); ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <ul class="wwt-toc-footer__details">
+                    <li><strong><?php esc_html_e( 'Version:', 'working-with-toc' ); ?></strong> <?php echo esc_html( $metadata['version'] ); ?></li>
+                    <?php if ( '' !== $metadata['author'] ) : ?>
+                        <li><strong><?php esc_html_e( 'Author:', 'working-with-toc' ); ?></strong>
+                            <?php if ( '' !== $metadata['author_url'] ) : ?>
+                                <a href="<?php echo esc_url( $metadata['author_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $metadata['author'] ); ?></a>
+                            <?php else : ?>
+                                <?php echo esc_html( $metadata['author'] ); ?>
+                            <?php endif; ?>
+                        </li>
+                    <?php endif; ?>
+                    <?php if ( '' !== $metadata['plugin_url'] ) : ?>
+                        <li><strong><?php esc_html_e( 'Plugin URI:', 'working-with-toc' ); ?></strong> <a href="<?php echo esc_url( $metadata['plugin_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View plugin page', 'working-with-toc' ); ?></a></li>
+                    <?php endif; ?>
+                    <li><strong><?php esc_html_e( 'License:', 'working-with-toc' ); ?></strong> <?php echo esc_html( $metadata['license'] ); ?></li>
+                    <?php if ( '' !== $metadata['requires_wp'] ) : ?>
+                        <li><strong><?php esc_html_e( 'Requires WordPress:', 'working-with-toc' ); ?></strong> <?php echo esc_html( $metadata['requires_wp'] ); ?></li>
+                    <?php endif; ?>
+                    <?php if ( '' !== $metadata['requires_php'] ) : ?>
+                        <li><strong><?php esc_html_e( 'Requires PHP:', 'working-with-toc' ); ?></strong> <?php echo esc_html( $metadata['requires_php'] ); ?></li>
+                    <?php endif; ?>
+                </ul>
             </footer>
         </div>
         <?php
