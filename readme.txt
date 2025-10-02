@@ -1,4 +1,4 @@
-=== Working with TOC ===
+=== Working With TOC ===
 Contributors: workingwithweb
 Tags: table of contents, seo, accessibility, structured data, multisite
 Requires at least: 6.0

@@ -85,14 +85,14 @@ class Admin_Page {
             'wwt-toc-admin',
             WWT_TOC_PLUGIN_URL . 'assets/css/admin.css',
             array(),
-            WWT_TOC_VERSION
+            WWTOC_VERSION
         );
 
         wp_enqueue_script(
             'wwt-toc-admin',
             WWT_TOC_PLUGIN_URL . 'assets/js/admin.js',
             array( 'jquery', 'wp-a11y' ),
-            WWT_TOC_VERSION,
+            WWTOC_VERSION,
             true
         );
 
