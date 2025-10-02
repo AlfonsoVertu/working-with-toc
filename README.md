@@ -1,77 +1,75 @@
 # Working with TOC
 
-## Table of Contents
-- [Overview](#overview)
-- [Repository Layout](#repository-layout)
-- [Getting Started](#getting-started)
-- [Working with Markdown Tables of Contents](#working-with-markdown-tables-of-contents)
-  - [Manual Updates](#manual-updates)
-  - [Automatic Generation](#automatic-generation)
-  - [Verification Checklist](#verification-checklist)
-- [Contributing](#contributing)
-- [License](#license)
+## Sommario
+- [Panoramica](#panoramica)
+- [Caratteristiche principali](#caratteristiche-principali)
+- [Struttura del plugin](#struttura-del-plugin)
+- [Impostazioni di backend](#impostazioni-di-backend)
+- [Funzionalità frontend](#funzionalità-frontend)
+- [Compatibilità SEO](#compatibilità-seo)
+- [Log e debug](#log-e-debug)
+- [Guida rapida](#guida-rapida)
 
-## Overview
+## Panoramica
 
-This repository is a deliberately minimal playground for practicing how to structure and maintain a Markdown table of contents (TOC). The only tracked file is this `README.md`, making it an ideal space to experiment with formatting, organization, and documentation workflows without distractions from other source files.
+**Working with TOC** è un plugin WordPress pensato per creare automaticamente un indice dei contenuti elegante e mobile-friendly per articoli, pagine e prodotti. Il progetto dimostra una suddivisione del codice secondo le convenzioni WordPress (cartelle `includes/`, `admin/`, `frontend/`, `assets/`) e include strumenti per generare dati strutturati compatibili con Rank Math e Yoast SEO.
 
-## Repository Layout
+## Caratteristiche principali
+
+- Accordion TOC fisso nella parte inferiore dello schermo con design moderno e supporto touch.
+- Generazione automatica degli anchor ID sui titoli `<h2>-<h6>` e sincronizzazione con gli URL della TOC.
+- Pannello di amministrazione personalizzato con interruttori per attivare TOC e dati strutturati per articoli, pagine e prodotti WooCommerce.
+- Output JSON-LD dedicato al tipo `TableOfContents` per articoli, pagine e prodotti, integrato nel grafo schema di Yoast SEO e riconosciuto da Rank Math.
+- Logging condizionato sul flag `WP_DEBUG` per agevolare il debug senza inquinare l'ambiente di produzione.
+
+## Struttura del plugin
 
 ```
 working-with-toc/
-└── README.md   # Primary documentation and TOC experimentation ground
+├── working-with-toc.php
+├── assets/
+│   ├── css/
+│   │   ├── admin.css
+│   │   └── frontend.css
+│   └── js/
+│       ├── admin.js
+│       └── frontend.js
+├── includes/
+│   ├── admin/
+│   │   └── class-admin-page.php
+│   ├── frontend/
+│   │   └── class-frontend.php
+│   ├── structured-data/
+│   │   └── class-structured-data-manager.php
+│   ├── class-autoloader.php
+│   ├── class-heading-parser.php
+│   ├── class-logger.php
+│   ├── class-plugin.php
+│   └── class-settings.php
+└── README.md
 ```
 
-Because everything happens inside the README, you can focus entirely on documenting processes, capturing conventions, and refining the TOC without needing to manage additional assets.
+## Impostazioni di backend
 
-## Getting Started
+Nel menu di amministrazione viene aggiunta una pagina “Working with TOC” con tre card dedicate ai diversi tipi di contenuto. Ogni card include uno switch moderno per attivare o disattivare la TOC e i relativi dati strutturati. Il layout utilizza gradienti, ombre morbide e micro-animazioni per un aspetto premium.
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd working-with-toc
-   ```
-2. **Create a feature branch** for your documentation updates.
-   ```bash
-   git checkout -b docs/update-readme
-   ```
-3. **Edit `README.md`** to practice reorganizing content, adding new sections, or experimenting with TOC formats.
-4. **Commit and push** your changes when you are satisfied with the structure.
+## Funzionalità frontend
 
-## Working with Markdown Tables of Contents
+La TOC viene generata e mostrata in un accordion fissato al bordo inferiore della finestra. Gli utenti possono aprirla o chiuderla rapidamente; quando è aperta, il contenuto scorre all'interno di un pannello a scomparsa con evidenziazione dinamica della sezione in lettura grazie a `IntersectionObserver`.
 
-The TOC at the top of this file illustrates a manually curated set of anchor links pointing to the major sections below. Depending on your workflow, you can update the TOC by hand or rely on automation tools.
+## Compatibilità SEO
 
-### Manual Updates
+- **Rank Math**: il plugin si registra tra i TOC supportati, evitando l’avviso “Nessun plugin TOC installato”.
+- **Yoast SEO**: i dati strutturati vengono aggiunti al grafo esistente tramite il filtro `wpseo_schema_graph` senza conflitti.
+- **Schema.org**: viene generato un nodo `TableOfContents` con riferimenti diretti alle intestazioni del contenuto, con URL coerenti con l’anchor ID generato nel markup.
 
-- Keep the TOC near the top of the document so readers can immediately jump to relevant sections.
-- Ensure each entry matches the exact spelling and capitalization of the corresponding heading, with spaces replaced by hyphens in the anchor link.
-- When adding new headings, update the TOC in the same commit to avoid broken navigation.
+## Log e debug
 
-### Automatic Generation
+Le operazioni principali (inizializzazione, salvataggio impostazioni, rendering schema) vengono tracciate attraverso `error_log` quando `WP_DEBUG` è impostato su `true`, fornendo informazioni utili senza influenzare l’ambiente live.
 
-If you prefer automation, tools such as [`markdown-toc`](https://github.com/jonschlinkert/markdown-toc), VS Code extensions like *Markdown All in One*, or GitHub Actions can generate and refresh the TOC for you.
+## Guida rapida
 
-1. Install your preferred tool locally.
-2. Run it against `README.md` to rebuild the TOC after you introduce new headings.
-3. Review the diff to confirm that anchors and indentation levels match your expectations.
-
-### Verification Checklist
-
-Before opening a pull request, double-check:
-
-- [ ] Every top-level heading (`##`) is represented in the TOC.
-- [ ] Nested bullet points reflect the heading hierarchy.
-- [ ] Internal links navigate correctly when clicked in the GitHub preview.
-- [ ] Markdown renders cleanly without lint warnings.
-
-## Contributing
-
-1. Fork the repository or work on a dedicated branch.
-2. Make focused documentation changes (for example, adding a new section or improving the TOC).
-3. Verify the TOC and Markdown formatting.
-4. Submit a pull request describing your updates and the documentation improvements made.
-
-## License
-
-No explicit license has been provided yet. If you plan to share or reuse the content, please coordinate with the repository maintainer to clarify licensing expectations.
+1. Copia la cartella del plugin all’interno di `wp-content/plugins/` e attivalo da WordPress.
+2. Visita **Impostazioni → Working with TOC** per scegliere dove abilitare la TOC e i dati strutturati.
+3. Modifica o crea un articolo/prodotto: il plugin aggiungerà automaticamente l’indice dei contenuti in un accordion sticky in fondo alla pagina.
+4. Verifica con Rank Math o Yoast SEO che l’analisi riconosca la TOC e i dati strutturati.
