@@ -427,17 +427,26 @@ class Structured_Data_Manager {
         $overrides = $this->settings->get_post_schema_overrides( $post );
         $fallbacks = $this->settings->get_schema_fallbacks( $post->post_type );
 
-        $headline = $overrides['headline'] ?: wp_strip_all_tags( get_the_title( $post ) );
+        $headline = $overrides['headline'];
+        if ( '' === $headline ) {
+            $headline = $this->resolve_automatic_headline( $post );
+        }
         if ( '' === $headline ) {
             $headline = $fallbacks['headline'];
         }
 
-        $description = $overrides['description'] ?: $this->generate_description( $post );
+        $description = $overrides['description'];
+        if ( '' === $description ) {
+            $description = $this->generate_description( $post );
+        }
         if ( '' === $description ) {
             $description = $fallbacks['description'];
         }
 
-        $image = $overrides['image'] ?: $this->resolve_primary_image( $post );
+        $image = $overrides['image'];
+        if ( '' === $image ) {
+            $image = $this->resolve_primary_image( $post );
+        }
         if ( '' === $image ) {
             $image = $fallbacks['image'];
         }
@@ -453,19 +462,27 @@ class Structured_Data_Manager {
      * Generate a description from the post content.
      */
     protected function generate_description( WP_Post $post ): string {
-        $excerpt = get_the_excerpt( $post );
+        if ( has_excerpt( $post ) ) {
+            $excerpt = get_the_excerpt( $post );
 
-        if ( is_string( $excerpt ) && '' !== trim( $excerpt ) ) {
-            return wp_strip_all_tags( $excerpt );
+            if ( is_string( $excerpt ) && '' !== trim( $excerpt ) ) {
+                return wp_strip_all_tags( $excerpt );
+            }
         }
 
-        $content = wp_strip_all_tags( $post->post_content );
+        $content = get_post_field( 'post_content', $post );
+
+        if ( ! is_string( $content ) ) {
+            return '';
+        }
+
+        $content = wp_strip_all_tags( $content );
 
         if ( '' === $content ) {
             return '';
         }
 
-        return wp_trim_words( $content, 40, '' );
+        return wp_trim_words( $content, 30, '' );
     }
 
     /**
@@ -476,6 +493,33 @@ class Structured_Data_Manager {
 
         if ( is_string( $thumbnail ) && '' !== $thumbnail ) {
             return esc_url_raw( $thumbnail );
+        }
+
+        $logo = $this->settings->get_default_schema_image_url();
+
+        if ( '' !== $logo ) {
+            return $logo;
+        }
+
+        return '';
+    }
+
+    /**
+     * Determine the automatic headline used for schema output.
+     */
+    protected function resolve_automatic_headline( WP_Post $post ): string {
+        $title = get_the_title( $post );
+
+        if ( is_string( $title ) && '' !== trim( $title ) ) {
+            return wp_strip_all_tags( $title );
+        }
+
+        if ( function_exists( 'wp_get_document_title' ) ) {
+            $document_title = wp_get_document_title();
+
+            if ( is_string( $document_title ) && '' !== trim( $document_title ) ) {
+                return wp_strip_all_tags( $document_title );
+            }
         }
 
         return '';
