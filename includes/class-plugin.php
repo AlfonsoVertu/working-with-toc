@@ -84,6 +84,7 @@ class Plugin {
         add_filter( 'rank_math/toc_plugins', array( $this, 'register_rank_math_plugin' ) );
         add_filter( 'rank_math/researches/is_toc_plugin_active', array( $this, 'mark_rank_math_active' ), 10, 2 );
         add_filter( 'rank_math/researches/is_toc_present', array( $this, 'mark_rank_math_presence' ), 10, 2 );
+        add_filter( 'rank_math/json_ld', array( $this->structured_data, 'filter_rank_math_json_ld' ), 10, 2 );
 
         // Yoast SEO integration – ensure our schema can be merged safely.
         add_filter( 'wpseo_schema_graph', array( $this->structured_data, 'filter_yoast_schema_graph' ) );

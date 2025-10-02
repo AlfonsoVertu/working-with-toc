@@ -35,6 +35,20 @@ class Structured_Data_Manager {
     protected $frontend;
 
     /**
+     * Cached schema for the current request.
+     *
+     * @var array<string,mixed>|null
+     */
+    protected $cached_schema = null;
+
+    /**
+     * Post ID for the cached schema.
+     *
+     * @var int
+     */
+    protected $cached_post_id = 0;
+
+    /**
      * Constructor.
      *
      * @param Settings $settings Settings handler.
@@ -58,19 +72,14 @@ class Structured_Data_Manager {
             return;
         }
 
-        if ( ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
-            return;
-        }
-
-        $preferences = $this->settings->get_post_preferences( $post );
-        $headings    = $this->collect_headings( $post, $preferences );
-        if ( empty( $headings ) ) {
-            return;
-        }
-
-        $schema = $this->build_schema( $post, $headings, $preferences );
-
+        $schema = $this->get_schema_for_post( $post );
         if ( empty( $schema ) ) {
+            return;
+        }
+
+        if ( defined( 'RANK_MATH_VERSION' ) ) {
+            Logger::log( 'Skipping direct structured data output because Rank Math integration is active for post ID ' . $post->ID );
+
             return;
         }
 
@@ -92,17 +101,11 @@ class Structured_Data_Manager {
         }
 
         $post = get_post();
-        if ( ! $post instanceof WP_Post || ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
+        if ( ! $post instanceof WP_Post ) {
             return $graph;
         }
 
-        $preferences = $this->settings->get_post_preferences( $post );
-        $headings    = $this->collect_headings( $post, $preferences );
-        if ( empty( $headings ) ) {
-            return $graph;
-        }
-
-        $schema = $this->build_schema( $post, $headings, $preferences );
+        $schema = $this->get_schema_for_post( $post );
         if ( empty( $schema ) ) {
             return $graph;
         }
@@ -111,6 +114,77 @@ class Structured_Data_Manager {
         Logger::log( 'Merged TOC schema into Yoast graph for post ID ' . $post->ID );
 
         return $graph;
+    }
+
+    /**
+     * Integrate with Rank Math JSON-LD graph.
+     *
+     * @param array<string,mixed> $data    Existing data passed to Rank Math.
+     * @param mixed               $jsonld  Rank Math JsonLD instance (unused).
+     *
+     * @return array<string,mixed>
+     */
+    public function filter_rank_math_json_ld( $data, $jsonld ): array {
+        if ( ! is_singular() ) {
+            return is_array( $data ) ? $data : array();
+        }
+
+        $post = get_post();
+        if ( ! $post instanceof WP_Post ) {
+            return is_array( $data ) ? $data : array();
+        }
+
+        $schema = $this->get_schema_for_post( $post );
+        if ( empty( $schema ) ) {
+            return is_array( $data ) ? $data : array();
+        }
+
+        if ( ! is_array( $data ) ) {
+            $data = array();
+        }
+
+        $data['wwtToc'] = $schema;
+
+        Logger::log( 'Merged TOC schema into Rank Math graph for post ID ' . $post->ID );
+
+        return $data;
+    }
+
+    /**
+     * Build or reuse schema for the given post.
+     *
+     * @param WP_Post $post Post object.
+     *
+     * @return array<string,mixed>
+     */
+    protected function get_schema_for_post( WP_Post $post ): array {
+        if ( null !== $this->cached_schema && $this->cached_post_id === $post->ID ) {
+            return $this->cached_schema;
+        }
+
+        $this->cached_post_id = $post->ID;
+        $this->cached_schema  = array();
+
+        if ( ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
+            return $this->cached_schema;
+        }
+
+        $preferences = $this->settings->get_post_preferences( $post );
+        $headings    = $this->collect_headings( $post, $preferences );
+
+        if ( empty( $headings ) ) {
+            return $this->cached_schema;
+        }
+
+        $schema = $this->build_schema( $post, $headings, $preferences );
+
+        if ( empty( $schema ) ) {
+            return $this->cached_schema;
+        }
+
+        $this->cached_schema = $schema;
+
+        return $this->cached_schema;
     }
 
     /**
