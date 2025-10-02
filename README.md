@@ -55,7 +55,7 @@ Nel menu di amministrazione viene aggiunta una pagina “Working with TOC” con
 
 ### Permessi personalizzati per la pagina impostazioni
 
-Il plugin utilizza la capability `manage_options` per impostazione predefinita, ma è possibile modificarla tramite il filtro `working_with_toc_admin_capability`. Ad esempio, per concedere l’accesso anche agli editor è sufficiente aggiungere al proprio tema o plugin:
+Il plugin registra la capability personalizzata `manage_working_with_toc` e la assegna automaticamente agli amministratori. È possibile modificarla tramite il filtro `working_with_toc_admin_capability`. Ad esempio, per concedere l’accesso anche agli editor è sufficiente aggiungere al proprio tema o plugin:
 
 ```php
 add_filter( 'working_with_toc_admin_capability', function ( $capability ) {

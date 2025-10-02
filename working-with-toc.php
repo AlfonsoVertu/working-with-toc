@@ -36,4 +36,13 @@ function working_with_toc() {
     return $plugin;
 }
 
+/**
+ * Run tasks on plugin activation.
+ */
+function working_with_toc_activate(): void {
+    working_with_toc()->ensure_capability();
+}
+
+register_activation_hook( __FILE__, 'working_with_toc_activate' );
+
 working_with_toc()->init();
