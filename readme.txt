@@ -1,6 +1,6 @@
 === Working with TOC ===
 Contributors: workingwithweb
-Tags: table of contents, seo, accessibility, structured data
+Tags: table of contents, seo, accessibility, structured data, multisite
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
@@ -42,6 +42,9 @@ Yes. The plugin outputs a Schema.org `TableOfContents` node that integrates with
 
 = What are the minimum requirements? =
 Working with TOC requires WordPress 6.0 or higher and PHP 7.4 or higher, and it is released under the GPLv2 or later license.
+
+= Is the plugin compatible with WordPress multisite? =
+Yes. The plugin has been verified on multisite networks. You can activate it per-site for independent settings, or network-activate it to make the admin page available across all sites while each site retains its own configuration.
 
 == Screenshots ==
 1. Sticky accordion TOC displayed on the frontend.
