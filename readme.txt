@@ -51,7 +51,11 @@ Yes. The plugin has been verified on multisite networks. You can activate it per
 
 == Screenshots ==
 1. Sticky accordion TOC displayed on the frontend.
+   ![Sticky accordion TOC displayed on the frontend](assets/images/screeshort-1.png)
 2. Settings page with post-type specific toggles.
+   ![Settings page with post-type specific toggles](assets/images/assets/screenshot-2.png)
+3. Organization structured data defaults configured in the admin.
+   ![Organization structured data defaults configured in the admin](assets/images/screenshot-3.png)
 
 == Changelog ==
 = 1.0.0 =

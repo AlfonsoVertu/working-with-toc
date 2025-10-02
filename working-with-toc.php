@@ -6,6 +6,7 @@
  * Version:     1.0.0
  * Author:      Alfonso Vertucci - Working with Web
  * Author URI:  https://workingwithweb.it/webagency
+ * Icon URI:    assets/images/www-logo.png
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: working-with-toc

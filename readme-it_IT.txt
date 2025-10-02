@@ -49,9 +49,13 @@ Working with TOC richiede WordPress 6.0 o superiore e PHP 7.4 o superiore ed è 
 = Il plugin è compatibile con WordPress multisite? =
 Sì. Il plugin è stato verificato nelle reti multisite. Puoi attivarlo per singolo sito per impostazioni indipendenti oppure attivarlo a livello di rete per rendere disponibile la pagina di amministrazione su tutti i siti, mantenendo comunque configurazioni indipendenti.
 
-== Screenshot ==
+== Screenshots ==
 1. Sommario a fisarmonica fissato sul frontend.
+   ![Sommario a fisarmonica fissato sul frontend](assets/images/screeshort-1.png)
 2. Pagina delle impostazioni con interruttori specifici per tipo di contenuto.
+   ![Pagina delle impostazioni con interruttori specifici per tipo di contenuto](assets/images/assets/screenshot-2.png)
+3. Configurazione dei dati strutturati dell'organizzazione nella pagina di amministrazione.
+   ![Configurazione dei dati strutturati dell'organizzazione nella pagina di amministrazione](assets/images/screenshot-3.png)
 
 == Changelog ==
 = 1.0.0 =
