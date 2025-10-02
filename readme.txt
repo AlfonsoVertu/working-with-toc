@@ -1,6 +1,5 @@
-![Working with TOC logo](assets/images/www-logo.png)
-
 === Working with TOC ===
+
 Contributors: workingwithweb
 Tags: table of contents, seo, accessibility, structured data, multisite
 Requires at least: 6.0
@@ -11,6 +10,8 @@ License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Create a responsive, sticky table of contents with SEO-ready structured data.
+
+![Working with TOC logo](assets/images/www-logo.png)
 
 == Description ==
 Working with TOC creates a polished, mobile-friendly table of contents (TOC) for articles, pages, and WooCommerce products.
