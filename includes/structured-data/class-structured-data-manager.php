@@ -62,6 +62,10 @@ class Structured_Data_Manager {
             return;
         }
 
+        if ( ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
+            return;
+        }
+
         $headings = $this->collect_headings( $post );
         if ( empty( $headings ) ) {
             return;
@@ -92,6 +96,10 @@ class Structured_Data_Manager {
 
         $post = get_post();
         if ( ! $post instanceof WP_Post || ! $this->settings->is_enabled_for( $post->post_type ) ) {
+            return $graph;
+        }
+
+        if ( ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
             return $graph;
         }
 

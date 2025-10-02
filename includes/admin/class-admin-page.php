@@ -126,6 +126,35 @@ class Admin_Page {
                     </div>
                 </div>
 
+                <h2><?php esc_html_e( 'Dati strutturati TOC', 'working-with-toc' ); ?></h2>
+                <p><?php esc_html_e( 'Scegli dove includere lo schema JSON-LD generato dalla table of contents.', 'working-with-toc' ); ?></p>
+                <div class="wwt-toc-card-grid">
+                    <div class="wwt-toc-card">
+                        <h3><?php esc_html_e( 'Articoli', 'working-with-toc' ); ?></h3>
+                        <p><?php esc_html_e( 'Attiva i dati strutturati per i post del blog.', 'working-with-toc' ); ?></p>
+                        <label class="wwt-switch">
+                            <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[structured_posts]" value="1" <?php checked( $settings['structured_posts'] ); ?>>
+                            <span class="wwt-slider"></span>
+                        </label>
+                    </div>
+                    <div class="wwt-toc-card">
+                        <h3><?php esc_html_e( 'Pagine', 'working-with-toc' ); ?></h3>
+                        <p><?php esc_html_e( 'Abilita lo schema TOC per le pagine statiche.', 'working-with-toc' ); ?></p>
+                        <label class="wwt-switch">
+                            <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[structured_pages]" value="1" <?php checked( $settings['structured_pages'] ); ?>>
+                            <span class="wwt-slider"></span>
+                        </label>
+                    </div>
+                    <div class="wwt-toc-card">
+                        <h3><?php esc_html_e( 'Prodotti', 'working-with-toc' ); ?></h3>
+                        <p><?php esc_html_e( 'Integra i dati strutturati TOC nelle schede prodotto WooCommerce.', 'working-with-toc' ); ?></p>
+                        <label class="wwt-switch">
+                            <input type="checkbox" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[structured_products]" value="1" <?php checked( $settings['structured_products'] ); ?>>
+                            <span class="wwt-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="wwt-toc-submit">
                     <?php submit_button( __( 'Salva impostazioni', 'working-with-toc' ) ); ?>
                 </div>
