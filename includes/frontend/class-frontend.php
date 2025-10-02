@@ -15,6 +15,7 @@ use WP_Post;
 use Working_With_TOC\Logger;
 use Working_With_TOC\Heading_Parser;
 use Working_With_TOC\Settings;
+use function Working_With_TOC\is_domdocument_missing;
 
 /**
  * Handles TOC injection and assets.
@@ -111,6 +112,10 @@ class Frontend {
         }
 
         if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return $content;
+        }
+
+        if ( is_domdocument_missing() ) {
             return $content;
         }
 
@@ -442,6 +447,10 @@ class Frontend {
      * @return string|null Updated content when a heading is found, otherwise null.
      */
     protected function insert_toc_after_first_heading( string $content, string $toc_markup ): ?string {
+        if ( is_domdocument_missing() || ! class_exists( '\\DOMDocument' ) ) {
+            return $content;
+        }
+
         $dom       = new DOMDocument();
         $previous  = libxml_use_internal_errors( true );
         $loaded    = $dom->loadHTML( '<?xml encoding="utf-8"?>' . $content );

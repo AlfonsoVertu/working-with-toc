@@ -26,6 +26,13 @@ class Heading_Parser {
      * @return array{headings:array<int,array{title:string,id:string,level:int}>,content:string}
      */
     public static function parse( string $content ): array {
+        if ( ! class_exists( '\\DOMDocument' ) || is_domdocument_missing() ) {
+            return array(
+                'headings' => array(),
+                'content'  => $content,
+            );
+        }
+
         $dom       = new DOMDocument();
         $previous = libxml_use_internal_errors( true );
         $dom->loadHTML( '<?xml encoding="utf-8"?>' . $content );
