@@ -20,6 +20,16 @@ use Working_With_TOC\Settings;
 class Frontend {
 
     /**
+     * Shortcode tag.
+     */
+    public const SHORTCODE_TAG = 'working_with_toc';
+
+    /**
+     * Placeholder used to swap shortcode output with the final TOC markup.
+     */
+    private const SHORTCODE_PLACEHOLDER = '<!-- wwt-toc-shortcode -->';
+
+    /**
      * Settings.
      *
      * @var Settings
@@ -65,6 +75,20 @@ class Frontend {
     }
 
     /**
+     * Register shortcode handler.
+     */
+    public function register_shortcode(): void {
+        add_shortcode( self::SHORTCODE_TAG, array( $this, 'render_shortcode' ) );
+    }
+
+    /**
+     * Render shortcode placeholder that will be replaced after heading parsing.
+     */
+    public function render_shortcode(): string {
+        return self::SHORTCODE_PLACEHOLDER;
+    }
+
+    /**
      * Inject TOC markup into the content.
      *
      * @param string $content Post content.
@@ -96,6 +120,30 @@ class Frontend {
         }
 
         $toc_markup = $this->build_toc_markup( $headings );
+
+        $shortcode_present = false;
+
+        $wrapped_placeholder_pattern = '#<p>\s*' . preg_quote( self::SHORTCODE_PLACEHOLDER, '#' ) . '\s*</p>#i';
+        $content_with_replaced_wrapped = preg_replace( $wrapped_placeholder_pattern, $toc_markup, $content, -1, $wrapped_replacements );
+
+        if ( is_string( $content_with_replaced_wrapped ) && $wrapped_replacements > 0 ) {
+            $content             = $content_with_replaced_wrapped;
+            $shortcode_present   = true;
+        }
+
+        if ( false !== strpos( $content, self::SHORTCODE_PLACEHOLDER ) ) {
+            $content           = str_replace( self::SHORTCODE_PLACEHOLDER, $toc_markup, $content );
+            $shortcode_present = true;
+        }
+
+        if ( $shortcode_present ) {
+            return $content;
+        }
+
+        $insertion_pattern = '#(<h[2-5][^>]*>.*?</h[2-5]>)#is';
+        if ( preg_match( $insertion_pattern, $content ) ) {
+            return preg_replace( $insertion_pattern, '$1' . $toc_markup, $content, 1 );
+        }
 
         return $content . $toc_markup;
     }
