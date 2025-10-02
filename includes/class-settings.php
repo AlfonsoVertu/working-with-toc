@@ -341,10 +341,18 @@ class Settings {
         $settings = $this->get_settings();
         $prefix   = $this->get_style_prefix( $post_type );
 
+        $headline    = $settings[ $prefix . '_schema_fallback_headline' ] ?? '';
+        $description = $settings[ $prefix . '_schema_fallback_description' ] ?? '';
+        $image       = $settings[ $prefix . '_schema_fallback_image' ] ?? '';
+
+        if ( '' === $image ) {
+            $image = $this->get_default_schema_image_url();
+        }
+
         return array(
-            'headline'    => $settings[ $prefix . '_schema_fallback_headline' ] ?? '',
-            'description' => $settings[ $prefix . '_schema_fallback_description' ] ?? '',
-            'image'       => $settings[ $prefix . '_schema_fallback_image' ] ?? '',
+            'headline'    => $headline,
+            'description' => $description,
+            'image'       => $image,
         );
     }
 
@@ -544,6 +552,33 @@ class Settings {
         }
 
         return $url;
+    }
+
+    /**
+     * Get the default image URL used for schema fallbacks.
+     */
+    public function get_default_schema_image_url(): string {
+        $organization = $this->get_organization_settings();
+
+        if ( ! empty( $organization['logo'] ) && is_string( $organization['logo'] ) ) {
+            $logo = esc_url_raw( $organization['logo'] );
+
+            if ( '' !== $logo ) {
+                return $logo;
+            }
+        }
+
+        $site_icon = function_exists( 'get_site_icon_url' ) ? get_site_icon_url() : '';
+
+        if ( is_string( $site_icon ) ) {
+            $site_icon = esc_url_raw( $site_icon );
+
+            if ( '' !== $site_icon ) {
+                return $site_icon;
+            }
+        }
+
+        return '';
     }
 
     /**

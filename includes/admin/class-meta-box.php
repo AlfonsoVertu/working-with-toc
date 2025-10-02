@@ -95,7 +95,7 @@ class Meta_Box {
 
         $auto_headline    = wp_strip_all_tags( get_the_title( $post ) );
         $auto_description = $this->generate_schema_description( $post );
-        $auto_image       = get_the_post_thumbnail_url( $post, 'full' );
+        $auto_image       = $this->resolve_auto_schema_image( $post );
 
         $schema_headline_value    = $schema_overrides['headline'];
         $schema_description_value = $schema_overrides['description'];
@@ -455,19 +455,46 @@ class Meta_Box {
      * Generate a short description for previewing structured data.
      */
     protected function generate_schema_description( WP_Post $post ): string {
-        $excerpt = get_the_excerpt( $post );
+        if ( has_excerpt( $post ) ) {
+            $excerpt = get_the_excerpt( $post );
 
-        if ( is_string( $excerpt ) && '' !== trim( $excerpt ) ) {
-            return wp_strip_all_tags( $excerpt );
+            if ( is_string( $excerpt ) && '' !== trim( $excerpt ) ) {
+                return wp_strip_all_tags( $excerpt );
+            }
         }
 
-        $content = wp_strip_all_tags( $post->post_content );
+        $content = get_post_field( 'post_content', $post );
+
+        if ( ! is_string( $content ) ) {
+            return '';
+        }
+
+        $content = wp_strip_all_tags( $content );
 
         if ( '' === $content ) {
             return '';
         }
 
-        return wp_trim_words( $content, 40, '' );
+        return wp_trim_words( $content, 30, '' );
+    }
+
+    /**
+     * Resolve the automatic schema image for preview purposes.
+     */
+    protected function resolve_auto_schema_image( WP_Post $post ): string {
+        $thumbnail = get_the_post_thumbnail_url( $post, 'full' );
+
+        if ( is_string( $thumbnail ) && '' !== $thumbnail ) {
+            return esc_url( $thumbnail );
+        }
+
+        $logo = $this->settings->get_default_schema_image_url();
+
+        if ( '' !== $logo ) {
+            return esc_url( $logo );
+        }
+
+        return '';
     }
 
     /**
