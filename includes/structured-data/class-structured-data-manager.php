@@ -493,8 +493,6 @@ class Structured_Data_Manager {
             '@id'              => $product_id,
             'name'             => wp_strip_all_tags( get_the_title( $post ) ),
             'mainEntityOfPage' => array( '@id' => $webpage_id ),
-            'isPartOf'         => array( '@id' => $website_id ),
-            'hasPart'          => array( array( '@id' => $item_list_id ) ),
         );
 
         if ( '' !== $values['description'] ) {
