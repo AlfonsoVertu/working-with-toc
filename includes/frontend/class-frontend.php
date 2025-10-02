@@ -454,7 +454,7 @@ class Frontend {
      * @return string|null Updated content when a heading is found, otherwise null.
      */
     protected function insert_toc_after_first_heading( string $content, string $toc_markup ): ?string {
-        if ( is_domdocument_missing() || ! class_exists( '\\DOMDocument' ) ) {
+        if ( is_domdocument_missing() || ! class_exists( \DOMDocument::class ) ) {
             return $content;
         }
 
