@@ -3,15 +3,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
     exit;
 }
 
-global $wpdb;
-
-if ( isset( $wpdb ) && property_exists( $wpdb, 'prefix' ) ) {
-    $table_name = $wpdb->prefix . 'working_with_toc';
-    $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
-}
-
 if ( function_exists( 'delete_option' ) ) {
-    delete_option( 'wwtoc_db_version' );
     delete_option( 'wwt_toc_settings' );
 }
 

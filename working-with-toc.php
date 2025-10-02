@@ -47,28 +47,6 @@ namespace Working_With_TOC {
      */
     function working_with_toc_activate(): void {
         working_with_toc()->ensure_capability();
-
-        global $wpdb;
-
-        $installed_version = get_option( 'wwtoc_db_version' );
-        $current_version   = WWTOC_VERSION;
-
-        if ( $installed_version !== $current_version ) {
-            $table_name      = $wpdb->prefix . 'working_with_toc';
-            $charset_collate = $wpdb->get_charset_collate();
-
-            $sql = "CREATE TABLE $table_name (
-            id mediumint(9) NOT NULL AUTO_INCREMENT,
-            title text NOT NULL,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            PRIMARY KEY  (id)
-        ) $charset_collate;";
-
-            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-            \dbDelta( $sql );
-
-            update_option( 'wwtoc_db_version', $current_version );
-        }
     }
 
     \register_activation_hook( __FILE__, __NAMESPACE__ . '\\working_with_toc_activate' );
