@@ -284,28 +284,29 @@ class Admin_Page {
                     <?php endforeach; ?>
                 </div>
 
+                <section class="wwt-toc-organization">
+                    <h2><?php esc_html_e( 'Organization structured data', 'working-with-toc' ); ?></h2>
+                    <p><?php esc_html_e( 'Customise the organisation details used for fallback structured data output.', 'working-with-toc' ); ?></p>
+                    <div class="wwt-toc-organization__grid">
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_name"><?php esc_html_e( 'Organization name', 'working-with-toc' ); ?></label>
+                            <input type="text" id="wwt_toc_organization_name" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_name]" value="<?php echo esc_attr( $settings['organization_name'] ); ?>" class="regular-text" />
+                        </div>
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_url"><?php esc_html_e( 'Organization URL', 'working-with-toc' ); ?></label>
+                            <input type="url" id="wwt_toc_organization_url" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_url]" value="<?php echo esc_attr( $settings['organization_url'] ); ?>" class="regular-text" />
+                        </div>
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_logo"><?php esc_html_e( 'Logo URL', 'working-with-toc' ); ?></label>
+                            <input type="url" id="wwt_toc_organization_logo" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_logo]" value="<?php echo esc_attr( $settings['organization_logo'] ); ?>" class="regular-text" />
+                        </div>
+                    </div>
+                </section>
+
                 <div class="wwt-toc-submit">
                     <?php submit_button( __( 'Save settings', 'working-with-toc' ) ); ?>
                 </div>
             </form>
-            <section class="wwt-toc-organization">
-                <h2><?php esc_html_e( 'Organization structured data', 'working-with-toc' ); ?></h2>
-                <p><?php esc_html_e( 'Customise the organisation details used for fallback structured data output.', 'working-with-toc' ); ?></p>
-                <div class="wwt-toc-organization__grid">
-                    <div class="wwt-toc-organization__field">
-                        <label for="wwt_toc_organization_name"><?php esc_html_e( 'Organization name', 'working-with-toc' ); ?></label>
-                        <input type="text" id="wwt_toc_organization_name" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_name]" value="<?php echo esc_attr( $settings['organization_name'] ); ?>" class="regular-text" />
-                    </div>
-                    <div class="wwt-toc-organization__field">
-                        <label for="wwt_toc_organization_url"><?php esc_html_e( 'Organization URL', 'working-with-toc' ); ?></label>
-                        <input type="url" id="wwt_toc_organization_url" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_url]" value="<?php echo esc_attr( $settings['organization_url'] ); ?>" class="regular-text" />
-                    </div>
-                    <div class="wwt-toc-organization__field">
-                        <label for="wwt_toc_organization_logo"><?php esc_html_e( 'Logo URL', 'working-with-toc' ); ?></label>
-                        <input type="url" id="wwt_toc_organization_logo" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_logo]" value="<?php echo esc_attr( $settings['organization_logo'] ); ?>" class="regular-text" />
-                    </div>
-                </div>
-            </section>
             <footer class="wwt-toc-footer">
                 <div class="wwt-toc-footer__branding">
                     <img class="wwt-toc-footer__logo" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Working with Web logo', 'working-with-toc' ); ?>" />
