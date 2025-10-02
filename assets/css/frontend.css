@@ -1,9 +1,9 @@
 .wwt-toc-container {
-    --wwt-toc-bg: #0f172a;
-    --wwt-toc-title-bg: #1e293b;
-    --wwt-toc-title-color: #f8fafc;
-    --wwt-toc-text: #e2e8f0;
-    --wwt-toc-link: #38bdf8;
+    --wwt-toc-bg: #ffffff;
+    --wwt-toc-title-bg: #1f2937;
+    --wwt-toc-title-color: #ffffff;
+    --wwt-toc-text: #111827;
+    --wwt-toc-link: #2563eb;
     --wwt-toc-translate-x: -50%;
     --wwt-toc-translate-y: 0;
     position: fixed;

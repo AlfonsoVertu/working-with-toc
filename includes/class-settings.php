@@ -73,11 +73,11 @@ class Settings {
 
         $style_defaults = array(
             'title'                  => __( 'Table of contents', 'working-with-toc' ),
-            'title_color'            => '#f8fafc',
-            'title_background_color' => '#1e293b',
-            'background_color'       => '#0f172a',
-            'link_color'             => '#38bdf8',
-            'text_color'             => '#e2e8f0',
+            'title_color'            => '#ffffff',
+            'title_background_color' => '#1f2937',
+            'background_color'       => '#ffffff',
+            'link_color'             => '#2563eb',
+            'text_color'             => '#111827',
         );
 
         $alignment_defaults = array(
@@ -264,15 +264,43 @@ class Settings {
         $prefix   = $this->get_style_prefix( $post_type );
 
         $preferences = array();
+        $schema      = $this->get_option_schema();
 
         foreach ( $this->get_style_fields() as $field ) {
-            $key                   = $prefix . '_' . $field;
-            $preferences[ $field ] = $settings[ $key ] ?? '';
+            $key     = $prefix . '_' . $field;
+            $config  = $schema[ $key ] ?? array();
+            $default = isset( $config['default'] ) ? (string) $config['default'] : '';
+            $value   = $settings[ $key ] ?? null;
+
+            if ( 'title' === $field ) {
+                $preferences[ $field ] = ( is_string( $value ) && '' !== $value )
+                    ? sanitize_text_field( $value )
+                    : $default;
+                continue;
+            }
+
+            $preferences[ $field ] = $this->sanitize_color_value( $value, $default );
         }
 
         foreach ( $this->get_layout_fields() as $field ) {
-            $key                   = $prefix . '_' . $field;
-            $preferences[ $field ] = $settings[ $key ] ?? '';
+            $key     = $prefix . '_' . $field;
+            $config  = $schema[ $key ] ?? array();
+            $default = isset( $config['default'] ) ? (string) $config['default'] : '';
+            $value   = $settings[ $key ] ?? null;
+
+            if ( 'horizontal_alignment' === $field ) {
+                $preferences[ $field ] = $this->sanitize_horizontal_alignment( $value, $default ?: 'right' );
+                continue;
+            }
+
+            if ( 'vertical_alignment' === $field ) {
+                $preferences[ $field ] = $this->sanitize_vertical_alignment( $value, $default ?: 'bottom' );
+                continue;
+            }
+
+            $preferences[ $field ] = ( is_string( $value ) && '' !== $value )
+                ? sanitize_text_field( $value )
+                : $default;
         }
 
         $preferences['excluded_headings'] = array();
