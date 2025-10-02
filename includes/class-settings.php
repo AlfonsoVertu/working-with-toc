@@ -246,6 +246,7 @@ class Settings {
         }
 
         $preferences['excluded_headings'] = array();
+        $preferences['has_custom_title_colors'] = false;
 
         return $preferences;
     }
@@ -279,6 +280,10 @@ class Settings {
             $color = $this->sanitize_color_value( $meta[ $color_field ], $defaults[ $color_field ] );
             if ( $color ) {
                 $preferences[ $color_field ] = $color;
+
+                if ( in_array( $color_field, array( 'title_color', 'title_background_color' ), true ) ) {
+                    $preferences['has_custom_title_colors'] = true;
+                }
             }
         }
 
