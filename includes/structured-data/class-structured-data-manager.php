@@ -114,7 +114,15 @@ class Structured_Data_Manager {
             return $graph;
         }
 
-        $graph[] = $schema['item_list'];
+        $item_list    = $schema['item_list'];
+        $item_list_id = is_string( $item_list['@id'] ?? null ) ? $item_list['@id'] : '';
+
+        if ( $item_list_id ) {
+            $parent_ids = $this->add_item_list_reference_to_schema_nodes( $graph, $item_list_id );
+            $item_list  = $this->link_item_list_to_parents( $item_list, $parent_ids );
+        }
+
+        $graph[] = $item_list;
         Logger::log( 'Merged TOC schema into Yoast graph for post ID ' . $post->ID );
 
         return $graph;
@@ -147,11 +155,166 @@ class Structured_Data_Manager {
             $data = array();
         }
 
-        $data['wwtToc'] = $schema['item_list'];
+        $item_list    = $schema['item_list'];
+        $item_list_id = is_string( $item_list['@id'] ?? null ) ? $item_list['@id'] : '';
+
+        if ( $item_list_id ) {
+            $parent_ids = $this->add_item_list_reference_to_schema_nodes( $data, $item_list_id );
+            $item_list  = $this->link_item_list_to_parents( $item_list, $parent_ids );
+        }
+
+        $data['wwtToc'] = $item_list;
 
         Logger::log( 'Merged TOC schema into Rank Math graph for post ID ' . $post->ID );
 
         return $data;
+    }
+
+    /**
+     * Ensure the given graph nodes reference the ItemList and return their IDs.
+     *
+     * @param array<int|string,mixed> $nodes        Graph nodes to inspect.
+     * @param string                  $item_list_id ItemList ID to reference.
+     * @param array<int,string>       $types        Node types to target.
+     *
+     * @return array<int,string> Parent node IDs that were detected.
+     */
+    protected function add_item_list_reference_to_schema_nodes( array &$nodes, string $item_list_id, array $types = array( 'WebPage', 'Article', 'Product' ) ): array {
+        $parent_ids = array();
+
+        foreach ( $nodes as &$node ) {
+            if ( ! is_array( $node ) ) {
+                continue;
+            }
+
+            $node_types = $node['@type'] ?? array();
+            if ( ! is_array( $node_types ) ) {
+                $node_types = array( $node_types );
+            }
+
+            if ( empty( array_intersect( $types, $node_types ) ) ) {
+                continue;
+            }
+
+            if ( $item_list_id ) {
+                $has_part = $this->normalize_reference_list( $node['hasPart'] ?? array() );
+                $has_part = $this->add_reference_if_missing( $has_part, $item_list_id );
+
+                if ( ! empty( $has_part ) ) {
+                    $node['hasPart'] = $has_part;
+                }
+            }
+
+            if ( isset( $node['@id'] ) && is_string( $node['@id'] ) && '' !== $node['@id'] ) {
+                $parent_ids[] = $node['@id'];
+            }
+        }
+
+        unset( $node );
+
+        if ( empty( $parent_ids ) ) {
+            return array();
+        }
+
+        return array_values( array_unique( $parent_ids ) );
+    }
+
+    /**
+     * Ensure the ItemList node references the detected parent nodes.
+     *
+     * @param array<string,mixed> $item_list ItemList node to adjust.
+     * @param array<int,string>   $parent_ids Parent node IDs to reference.
+     *
+     * @return array<string,mixed> Updated ItemList node.
+     */
+    protected function link_item_list_to_parents( array $item_list, array $parent_ids ): array {
+        if ( empty( $parent_ids ) ) {
+            return $item_list;
+        }
+
+        $is_part_of = $this->normalize_reference_list( $item_list['isPartOf'] ?? array() );
+
+        foreach ( $parent_ids as $parent_id ) {
+            $is_part_of = $this->add_reference_if_missing( $is_part_of, $parent_id );
+        }
+
+        if ( ! empty( $is_part_of ) ) {
+            $item_list['isPartOf'] = $is_part_of;
+        }
+
+        return $item_list;
+    }
+
+    /**
+     * Normalize a schema reference property to a list of references.
+     *
+     * @param mixed $value Raw property value.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    protected function normalize_reference_list( $value ): array {
+        if ( empty( $value ) ) {
+            return array();
+        }
+
+        if ( is_string( $value ) ) {
+            return array( array( '@id' => $value ) );
+        }
+
+        if ( ! is_array( $value ) ) {
+            return array();
+        }
+
+        if ( $this->is_associative_array( $value ) ) {
+            return array( $value );
+        }
+
+        $normalized = array();
+
+        foreach ( $value as $item ) {
+            if ( is_string( $item ) ) {
+                $normalized[] = array( '@id' => $item );
+            } elseif ( is_array( $item ) ) {
+                $normalized[] = $item;
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Append a reference to the list when missing.
+     *
+     * @param array<int,array<string,mixed>> $references Reference list.
+     * @param string                         $id         ID to inject.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    protected function add_reference_if_missing( array $references, string $id ): array {
+        foreach ( $references as $reference ) {
+            if ( is_array( $reference ) && isset( $reference['@id'] ) && $reference['@id'] === $id ) {
+                return $references;
+            }
+        }
+
+        $references[] = array( '@id' => $id );
+
+        return $references;
+    }
+
+    /**
+     * Determine whether an array is associative.
+     *
+     * @param array<mixed> $array Array to inspect.
+     *
+     * @return bool
+     */
+    protected function is_associative_array( array $array ): bool {
+        if ( array() === $array ) {
+            return false;
+        }
+
+        return array_keys( $array ) !== range( 0, count( $array ) - 1 );
     }
 
     /**
