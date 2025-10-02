@@ -40,7 +40,7 @@ namespace Working_With_TOC {
         $wwt_toc_missing_domdocument = false;
     }
 
-    if ( ! class_exists( '\\DOMDocument' ) ) {
+    if ( ! class_exists( \DOMDocument::class ) ) {
         $wwt_toc_missing_domdocument = true;
         add_action( 'admin_notices', __NAMESPACE__ . '\\render_missing_domdocument_notice' );
         return;

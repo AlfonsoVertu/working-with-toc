@@ -26,7 +26,7 @@ class Heading_Parser {
      * @return array{headings:array<int,array{title:string,id:string,level:int}>,content:string}
      */
     public static function parse( string $content ): array {
-        if ( ! class_exists( '\\DOMDocument' ) || is_domdocument_missing() ) {
+        if ( ! class_exists( \DOMDocument::class ) || is_domdocument_missing() ) {
             return array(
                 'headings' => array(),
                 'content'  => $content,
