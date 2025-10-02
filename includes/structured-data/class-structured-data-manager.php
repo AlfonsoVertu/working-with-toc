@@ -58,7 +58,7 @@ class Structured_Data_Manager {
             return;
         }
 
-        if ( ! $this->settings->is_enabled_for( $post->post_type ) ) {
+        if ( ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
             return;
         }
 
@@ -91,7 +91,7 @@ class Structured_Data_Manager {
         }
 
         $post = get_post();
-        if ( ! $post instanceof WP_Post || ! $this->settings->is_enabled_for( $post->post_type ) ) {
+        if ( ! $post instanceof WP_Post || ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
             return $graph;
         }
 

@@ -26,9 +26,12 @@ class Settings {
      */
     public function get_defaults(): array {
         return array(
-            'enable_posts' => true,
-            'enable_pages'    => false,
-            'enable_products' => false,
+            'enable_posts'          => true,
+            'enable_pages'          => false,
+            'enable_products'       => false,
+            'structured_posts'      => true,
+            'structured_pages'      => false,
+            'structured_products'   => false,
         );
     }
 
@@ -59,7 +62,7 @@ class Settings {
     }
 
     /**
-     * Check if structured data is enabled for a post type.
+     * Check if the TOC is enabled for a post type.
      *
      * @param string $post_type Post type slug.
      *
@@ -75,6 +78,26 @@ class Settings {
                 return ! empty( $settings['enable_products'] );
             default:
                 return ! empty( $settings['enable_posts'] );
+        }
+    }
+
+    /**
+     * Check if structured data is enabled for a post type.
+     *
+     * @param string $post_type Post type slug.
+     *
+     * @return bool
+     */
+    public function is_structured_data_enabled_for( string $post_type ): bool {
+        $settings = $this->get_settings();
+
+        switch ( $post_type ) {
+            case 'page':
+                return ! empty( $settings['structured_pages'] );
+            case 'product':
+                return ! empty( $settings['structured_products'] );
+            default:
+                return ! empty( $settings['structured_posts'] );
         }
     }
 
