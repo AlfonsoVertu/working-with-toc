@@ -1,0 +1,160 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Working with TOC 1.0.0\n"
+"POT-Creation-Date: 2024-05-30 00:00+0000\n"
+"PO-Revision-Date: 2024-05-30 00:00+0000\n"
+"Last-Translator: ChatGPT <chatgpt@example.com>\n"
+"Language-Team: Italian\n"
+"Language: it_IT\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: includes/admin/class-admin-page.php:69
+msgid "Activated"
+msgstr "Attivato"
+
+#: includes/admin/class-admin-page.php:70
+msgid "Deactivated"
+msgstr "Disattivato"
+
+#: includes/admin/class-admin-page.php:86
+msgid "Manage structured data for posts, products, and pages."
+msgstr "Gestisci i dati strutturati per articoli, prodotti e pagine."
+
+#: includes/admin/class-admin-page.php:95
+msgid "Posts"
+msgstr "Articoli"
+
+#: includes/admin/class-admin-page.php:96
+msgid "Enable the TOC and structured data for standard posts."
+msgstr "Abilita la TOC e i dati strutturati per i post standard."
+
+#: includes/admin/class-admin-page.php:101
+msgid "Pages"
+msgstr "Pagine"
+
+#: includes/admin/class-admin-page.php:102
+msgid "Enable the TOC for the site's static pages."
+msgstr "Attiva la TOC per le pagine statiche del sito."
+
+#: includes/admin/class-admin-page.php:107
+msgid "Products"
+msgstr "Prodotti"
+
+#: includes/admin/class-admin-page.php:108
+msgid "Integrate with WooCommerce for complete product pages."
+msgstr "Integrazione con WooCommerce per schede prodotto complete."
+
+#: includes/admin/class-admin-page.php:115 includes/admin/class-meta-box.php:206
+msgid "Title color"
+msgstr "Colore del titolo"
+
+#: includes/admin/class-admin-page.php:116 includes/admin/class-meta-box.php:209
+msgid "Title background"
+msgstr "Sfondo del titolo"
+
+#: includes/admin/class-admin-page.php:117 includes/admin/class-meta-box.php:212
+msgid "Container background"
+msgstr "Sfondo del box"
+
+#: includes/admin/class-admin-page.php:118 includes/admin/class-meta-box.php:215
+msgid "Text color"
+msgstr "Colore del testo"
+
+#: includes/admin/class-admin-page.php:119 includes/admin/class-meta-box.php:218
+msgid "Link color"
+msgstr "Colore dei link"
+
+#: includes/admin/class-admin-page.php:124 includes/admin/class-meta-box.php:123
+msgid "Left"
+msgstr "Sinistra"
+
+#: includes/admin/class-admin-page.php:125 includes/admin/class-meta-box.php:124
+msgid "Center"
+msgstr "Centro"
+
+#: includes/admin/class-admin-page.php:126 includes/admin/class-meta-box.php:125
+msgid "Right"
+msgstr "Destra"
+
+#: includes/admin/class-admin-page.php:131 includes/admin/class-meta-box.php:129
+msgid "Top"
+msgstr "In alto"
+
+#: includes/admin/class-admin-page.php:132 includes/admin/class-meta-box.php:130
+msgid "Bottom"
+msgstr "In basso"
+
+#: includes/admin/class-admin-page.php:148 includes/admin/class-meta-box.php:59 includes/class-settings.php:63 includes/frontend/class-frontend.php:196 includes/structured-data/class-structured-data-manager.php:181
+msgid "Table of contents"
+msgstr "Indice dei contenuti"
+
+#: includes/admin/class-admin-page.php:155
+msgid "TOC structured data"
+msgstr "Dati strutturati TOC"
+
+#: includes/admin/class-admin-page.php:162
+msgid "Default style"
+msgstr "Stile predefinito"
+
+#: includes/admin/class-admin-page.php:163
+msgid "Set the title and base colors for the table of contents on this content type."
+msgstr "Imposta titolo e colori di base per l'indice di questo tipo di contenuto."
+
+#: includes/admin/class-admin-page.php:166 includes/admin/class-meta-box.php:142
+msgid "TOC title"
+msgstr "Titolo della TOC"
+
+#: includes/admin/class-admin-page.php:182 includes/admin/class-meta-box.php:161 includes/admin/class-meta-box.php:169
+msgid "Horizontal position"
+msgstr "Posizione orizzontale"
+
+#: includes/admin/class-admin-page.php:189 includes/admin/class-meta-box.php:173 includes/admin/class-meta-box.php:181
+msgid "Vertical position"
+msgstr "Posizione verticale"
+
+#: includes/admin/class-admin-page.php:208
+msgid "Save settings"
+msgstr "Salva impostazioni"
+
+#: includes/admin/class-admin-page.php:212
+msgid "Compatible with Rank Math and Yoast SEO. Enable WordPress debug mode to log plugin events."
+msgstr "Compatibile con Rank Math e Yoast SEO. Attiva la modalità debug di WordPress per registrare gli eventi del plugin."
+
+#: includes/admin/class-meta-box.php:70
+msgid "Customize the table of contents for this entry. The plugin's global settings apply when fields are left unchanged."
+msgstr "Personalizza l'indice dei contenuti per questo elemento. Le impostazioni globali del plugin verranno utilizzate quando i campi restano invariati."
+
+#: includes/admin/class-meta-box.php:78 includes/admin/class-meta-box.php:96
+msgid "Reset"
+msgstr "Ripristina"
+
+#: includes/admin/class-meta-box.php:86
+msgid "Custom colors"
+msgstr "Colori personalizzati"
+
+#: includes/admin/class-meta-box.php:102
+msgid "TOC placement"
+msgstr "Posizionamento della TOC"
+
+#: includes/admin/class-meta-box.php:111
+msgid "Included headings"
+msgstr "Titoli inclusi"
+
+#: includes/admin/class-meta-box.php:121
+msgid "Deselect the headings you do not want to display in the table of contents."
+msgstr "Deseleziona i titoli che non vuoi mostrare nell'indice."
+
+#: includes/admin/class-meta-box.php:123
+msgid "Add headings (H2-H6) to the content and save to generate the table of contents automatically."
+msgstr "Aggiungi dei titoli (H2-H6) al contenuto e salva per generare automaticamente l'indice."
+
+#: includes/admin/class-meta-box.php:220
+msgid "Color"
+msgstr "Colore"
+
+#: includes/admin/class-admin-page.php:92
+msgid "Working with TOC"
+msgstr "Working with TOC"
