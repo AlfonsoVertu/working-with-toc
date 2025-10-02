@@ -85,3 +85,11 @@ Le operazioni principali (inizializzazione, salvataggio impostazioni, rendering 
 2. Visita **Impostazioni → Working with TOC** per scegliere dove abilitare la TOC e i dati strutturati.
 3. Modifica o crea un articolo/prodotto: il plugin aggiungerà automaticamente l’indice dei contenuti in un accordion sticky in fondo alla pagina.
 4. Verifica con Rank Math o Yoast SEO che l’analisi riconosca la TOC e i dati strutturati.
+
+## Supporto Multisite
+
+Il plugin è stato testato su installazioni WordPress multisite.
+
+- **Attivazione per singolo sito**: attivalo dal pannello del sito specifico per mantenere impostazioni indipendenti in ogni blog della rete.
+- **Attivazione a livello di network**: un super admin può attivarlo dalla schermata Network Admin → Plugin; l’interfaccia **Impostazioni → Working with TOC** resterà disponibile in ogni sito e le preferenze vengono salvate per sito.
+- **Suggerimento di test**: dopo l’attivazione, visita almeno un sito secondario per confermare che la TOC venga generata correttamente e che le impostazioni siano personalizzabili in modo autonomo.
