@@ -92,7 +92,7 @@ class Admin_Page {
             $this->capability,
             'working-with-toc',
             array( $this, 'render_page' ),
-            WWT_TOC_PLUGIN_URL . 'assets/images/www-logo.png'
+            WWT_TOC_PLUGIN_URL . 'assets/images/menu-icon.svg'
         );
     }
 
