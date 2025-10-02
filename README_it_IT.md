@@ -61,6 +61,9 @@ working-with-toc/
 └── README.md
 ```
 
+> **Nota di manutenzione:** I loader legacy `class-toc-json.php` e `class-toc-product-json.php` presenti nella root sono stati
+> rimossi perché l’autoloader PSR-4 carica ora le classi aggiornate dalla directory `includes/`.
+
 ## Impostazioni di backend
 
 Nel menu di amministrazione viene aggiunta una pagina **Working with TOC** con tre card dedicate ai diversi tipi di contenuto. Ogni card include uno switch moderno per attivare o disattivare la TOC e i relativi dati strutturati. Il layout utilizza gradienti, ombre morbide e micro-animazioni per un aspetto premium.
