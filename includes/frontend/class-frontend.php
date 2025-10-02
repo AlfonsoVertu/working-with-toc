@@ -182,19 +182,22 @@ class Frontend {
             );
         }
 
+        $label = __( 'Indice dei contenuti', 'working-with-toc' );
+
         $markup = sprintf(
-            '<div class="wwt-toc-container" data-wwt-toc data-expanded="false">
+            '<div class="wwt-toc-container" data-wwt-toc="true" data-expanded="false">
                 <button class="wwt-toc-toggle" type="button" aria-expanded="false">
                     <span class="wwt-toc-label">%1$s</span>
                     <span class="wwt-toc-icon" aria-hidden="true"></span>
                 </button>
-                <div class="wwt-toc-content" hidden>
-                    <nav class="wwt-toc-nav" aria-label="%1$s">
-                        <ol class="wwt-toc-list">%2$s</ol>
+                <div class="wwt-toc-content" hidden="hidden">
+                    <nav class="wwt-toc-nav" aria-label="%2$s">
+                        <ol class="wwt-toc-list">%3$s</ol>
                     </nav>
                 </div>
             </div>',
-            esc_html__( 'Indice dei contenuti', 'working-with-toc' ),
+            esc_html( $label ),
+            esc_attr( $label ),
             $items
         );
 
