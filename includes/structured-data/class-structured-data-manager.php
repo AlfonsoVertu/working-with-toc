@@ -358,6 +358,42 @@ class Structured_Data_Manager {
             $webpage['primaryImageOfPage'] = array( '@id' => $image_id );
         }
 
+        $article_type = $this->get_article_type( $post );
+
+        if ( 'WebPage' === $article_type ) {
+            $webpage['hasPart']   = array( array( '@id' => $item_list_id ) );
+            $webpage['publisher'] = array( '@id' => $organization_id );
+
+            if ( '' !== $values['image'] ) {
+                $webpage['image'] = array( '@id' => $image_id );
+            }
+
+            $published = get_post_time( DATE_W3C, true, $post );
+            if ( $published ) {
+                $webpage['datePublished'] = $published;
+            }
+
+            $modified = get_post_modified_time( DATE_W3C, true, $post );
+            if ( $modified ) {
+                $webpage['dateModified'] = $modified;
+            }
+
+            $author_name = get_the_author_meta( 'display_name', $post->post_author );
+            if ( $author_name ) {
+                $author = array(
+                    '@type' => 'Person',
+                    'name'  => $author_name,
+                );
+
+                $author_url = get_author_posts_url( $post->post_author );
+                if ( $author_url ) {
+                    $author['url'] = $author_url;
+                }
+
+                $webpage['author'] = $author;
+            }
+        }
+
         $graph[] = $webpage;
 
         if ( ! empty( $breadcrumb['itemListElement'] ) ) {
@@ -370,10 +406,10 @@ class Structured_Data_Manager {
             if ( ! empty( $product_node ) ) {
                 $graph[] = $product_node;
             }
-        } else {
+        } elseif ( 'WebPage' !== $article_type ) {
             $article_id = $permalink . '#article';
             $article    = array(
-                '@type'            => $this->get_article_type( $post ),
+                '@type'            => $article_type,
                 '@id'              => $article_id,
                 'headline'         => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
                 'mainEntityOfPage' => array( '@id' => $webpage_id ),
