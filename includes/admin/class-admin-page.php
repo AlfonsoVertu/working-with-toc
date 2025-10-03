@@ -88,7 +88,7 @@ class Admin_Page {
     public function register_menu(): void {
         add_menu_page(
             __( 'Working with TOC', 'working-with-toc' ),
-            __( 'Working with TOC', 'working-with-toc' ),
+            __( 'www TOC', 'working-with-toc' ),
             $this->capability,
             'working-with-toc',
             array( $this, 'render_page' ),
