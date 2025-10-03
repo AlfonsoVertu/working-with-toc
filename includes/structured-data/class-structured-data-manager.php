@@ -714,8 +714,8 @@ class Structured_Data_Manager {
      * Build the fallback structured data graph when no SEO plugin is active.
      *
      * @param WP_Post             $post        Post object.
-     * @param array<string,mixed>  $item_list  ItemList node.
-     * @param array<string,string> $values     Resolved schema values.
+     * @param array<string,mixed> $item_list   ItemList node.
+     * @param array{headline:string,description:string,image:string,video:array<string,string>} $values Resolved schema values.
      * @param array<string,mixed>|null $faq    FAQPage node when available.
      *
      * @return array<string,mixed>
@@ -736,6 +736,7 @@ class Structured_Data_Manager {
         $breadcrumb_id    = $permalink . '#breadcrumb';
         $image_id         = $permalink . '#primaryimage';
         $item_list_id     = $item_list['@id'] ?? ( $permalink . '#table-of-contents' );
+        $video_id         = $permalink . '#primaryvideo';
 
         $graph = array();
 
@@ -792,7 +793,9 @@ class Structured_Data_Manager {
             $webpage['description'] = $values['description'];
         }
 
-        if ( '' !== $values['image'] ) {
+        $image_node = $this->build_image_object( $values['image'], $image_id );
+
+        if ( ! empty( $image_node ) ) {
             $webpage['primaryImageOfPage'] = array( '@id' => $image_id );
         }
 
@@ -802,7 +805,7 @@ class Structured_Data_Manager {
             $webpage['hasPart']   = array( array( '@id' => $item_list_id ) );
             $webpage['publisher'] = array( '@id' => $organization_id );
 
-            if ( '' !== $values['image'] ) {
+            if ( ! empty( $image_node ) ) {
                 $webpage['image'] = array( '@id' => $image_id );
             }
 
@@ -832,11 +835,22 @@ class Structured_Data_Manager {
             }
         }
 
+        $video_node = array();
+        $video_data = is_array( $values['video'] ?? null ) ? $values['video'] : array();
+
+        if ( ! empty( $video_data ) ) {
+            $video_node = $this->build_video_object( $video_data, $video_id, $values, $organization_id, $post );
+
+            if ( ! empty( $video_node ) ) {
+                $webpage['video'] = array( '@id' => $video_id );
+            }
+        }
+
         $product_node = array();
         $article_node = array();
 
         if ( 'product' === $post->post_type ) {
-            $product_node = $this->build_product_node( $post, $values, $webpage_id, $image_id, $permalink );
+            $product_node = $this->build_product_node( $post, $values, $webpage_id, $image_id, $permalink, ! empty( $video_node ) ? $video_id : '' );
 
             $parent_ids = array();
 
@@ -896,8 +910,12 @@ class Structured_Data_Manager {
                 $article_node['description'] = $values['description'];
             }
 
-            if ( '' !== $values['image'] ) {
+            if ( ! empty( $image_node ) ) {
                 $article_node['image'] = array( '@id' => $image_id );
+            }
+
+            if ( ! empty( $video_node ) ) {
+                $article_node['video'] = array( '@id' => $video_id );
             }
 
             $published = get_post_time( DATE_W3C, true, $post );
@@ -940,12 +958,12 @@ class Structured_Data_Manager {
             $graph[] = $article_node;
         }
 
-        if ( '' !== $values['image'] ) {
-            $graph[] = array(
-                '@type' => 'ImageObject',
-                '@id'   => $image_id,
-                'url'   => $values['image'],
-            );
+        if ( ! empty( $image_node ) ) {
+            $graph[] = $image_node;
+        }
+
+        if ( ! empty( $video_node ) ) {
+            $graph[] = $video_node;
         }
 
         $item_list['@id'] = $item_list_id;
@@ -965,14 +983,15 @@ class Structured_Data_Manager {
      * Build the Product schema node for WooCommerce products.
      *
      * @param WP_Post             $post            Product post object.
-     * @param array<string,string> $values         Resolved schema values.
+     * @param array{headline:string,description:string,image:string,video:array<string,string>} $values Resolved schema values.
      * @param string              $webpage_id     WebPage node ID.
      * @param string              $image_id       Image node ID.
      * @param string              $permalink      Product permalink.
+     * @param string              $video_id       Video node ID when available.
      *
      * @return array<string,mixed>
      */
-    protected function build_product_node( WP_Post $post, array $values, string $webpage_id, string $image_id, string $permalink ): array {
+    protected function build_product_node( WP_Post $post, array $values, string $webpage_id, string $image_id, string $permalink, string $video_id = '' ): array {
         $product_id = $permalink . '#product';
 
         $product_node = array(
@@ -988,6 +1007,10 @@ class Structured_Data_Manager {
 
         if ( '' !== $values['image'] ) {
             $product_node['image'] = array( '@id' => $image_id );
+        }
+
+        if ( '' !== $video_id ) {
+            $product_node['video'] = array( '@id' => $video_id );
         }
 
         if ( function_exists( 'wc_get_product' ) ) {
@@ -1067,7 +1090,7 @@ class Structured_Data_Manager {
      *
      * @param WP_Post $post Post object.
      *
-     * @return array<string,string>
+     * @return array{headline:string,description:string,image:string,video:array<string,string>}
      */
     protected function resolve_schema_values( WP_Post $post ): array {
         $overrides = $this->settings->get_post_schema_overrides( $post );
@@ -1097,11 +1120,490 @@ class Structured_Data_Manager {
             $image = $fallbacks['image'];
         }
 
+        $video = $this->resolve_primary_video( $post );
+
         return array(
             'headline'    => $headline,
             'description' => $description,
             'image'       => $image,
+            'video'       => $video,
         );
+    }
+
+    /**
+     * Resolve primary video data for the post.
+     *
+     * @param WP_Post $post Post object.
+     *
+     * @return array<string,string>
+     */
+    protected function resolve_primary_video( WP_Post $post ): array {
+        $video = apply_filters( 'working_with_toc_structured_data_video_data', array(), $post );
+
+        $video = $this->normalise_video_data( $video );
+
+        if ( ! empty( $video ) ) {
+            return $video;
+        }
+
+        $content = get_post_field( 'post_content', $post );
+
+        if ( ! is_string( $content ) || '' === trim( $content ) ) {
+            return array();
+        }
+
+        if ( function_exists( 'parse_blocks' ) ) {
+            $blocks = parse_blocks( $content );
+
+            if ( ! empty( $blocks ) ) {
+                $block_video = $this->extract_video_from_blocks( $blocks );
+                $block_video = $this->normalise_video_data( $block_video );
+
+                if ( ! empty( $block_video ) ) {
+                    return $block_video;
+                }
+            }
+        }
+
+        $html_video = $this->extract_video_from_html( $content );
+
+        return $this->normalise_video_data( $html_video );
+    }
+
+    /**
+     * Normalize video data ensuring expected keys are present and sanitized.
+     *
+     * @param array<string,mixed> $video Raw video data.
+     *
+     * @return array<string,string>
+     */
+    protected function normalise_video_data( $video ): array {
+        if ( ! is_array( $video ) ) {
+            return array();
+        }
+
+        $embed_url   = isset( $video['embed_url'] ) ? $this->settings->sanitize_url_value( $video['embed_url'], '' ) : '';
+        $content_url = isset( $video['content_url'] ) ? $this->settings->sanitize_url_value( $video['content_url'], '' ) : '';
+
+        if ( '' === $embed_url && '' === $content_url ) {
+            return array();
+        }
+
+        $thumbnail = isset( $video['thumbnail_url'] ) ? $this->settings->sanitize_url_value( $video['thumbnail_url'], '' ) : '';
+        $name      = isset( $video['name'] ) ? sanitize_text_field( $video['name'] ) : '';
+        $duration  = isset( $video['duration'] ) ? sanitize_text_field( $video['duration'] ) : '';
+        $upload    = isset( $video['upload_date'] ) ? sanitize_text_field( $video['upload_date'] ) : '';
+        $description = isset( $video['description'] ) ? sanitize_textarea_field( $video['description'] ) : '';
+
+        return array(
+            'embed_url'     => $embed_url,
+            'content_url'   => $content_url,
+            'thumbnail_url' => $thumbnail,
+            'name'          => $name,
+            'description'   => $description,
+            'duration'      => $duration,
+            'upload_date'   => $upload,
+        );
+    }
+
+    /**
+     * Extract video data from parsed block array.
+     *
+     * @param array<int,array<string,mixed>> $blocks Parsed blocks.
+     *
+     * @return array<string,string>
+     */
+    protected function extract_video_from_blocks( array $blocks ): array {
+        foreach ( $blocks as $block ) {
+            if ( ! is_array( $block ) ) {
+                continue;
+            }
+
+            $block_name = isset( $block['blockName'] ) ? (string) $block['blockName'] : '';
+
+            if ( 'core/video' === $block_name ) {
+                $attrs = isset( $block['attrs'] ) && is_array( $block['attrs'] ) ? $block['attrs'] : array();
+
+                $src      = isset( $attrs['src'] ) ? $this->settings->sanitize_url_value( $attrs['src'], '' ) : '';
+                $poster   = isset( $attrs['poster'] ) ? $this->settings->sanitize_url_value( $attrs['poster'], '' ) : '';
+                $name     = isset( $attrs['title'] ) ? sanitize_text_field( $attrs['title'] ) : '';
+                $duration = '';
+                $upload   = '';
+
+                if ( isset( $attrs['id'] ) && is_numeric( $attrs['id'] ) ) {
+                    $attachment_id = (int) $attrs['id'];
+
+                    if ( '' === $src ) {
+                        $src = $this->settings->sanitize_url_value( wp_get_attachment_url( $attachment_id ), '' );
+                    }
+
+                    if ( '' === $name ) {
+                        $attachment_title = get_the_title( $attachment_id );
+                        if ( is_string( $attachment_title ) && '' !== trim( $attachment_title ) ) {
+                            $name = sanitize_text_field( $attachment_title );
+                        }
+                    }
+
+                    $metadata = wp_get_attachment_metadata( $attachment_id );
+
+                    if ( is_array( $metadata ) ) {
+                        if ( '' === $poster && isset( $metadata['image']['src'] ) ) {
+                            $poster = $this->settings->sanitize_url_value( $this->build_upload_url_from_path( (string) $metadata['image']['src'] ), '' );
+                        }
+
+                        if ( isset( $metadata['length'] ) && is_numeric( $metadata['length'] ) && (int) $metadata['length'] > 0 ) {
+                            $duration = $this->format_duration_from_seconds( (int) $metadata['length'] );
+                        }
+
+                        if ( isset( $metadata['created_timestamp'] ) && is_numeric( $metadata['created_timestamp'] ) ) {
+                            $upload = gmdate( DATE_W3C, (int) $metadata['created_timestamp'] );
+                        }
+                    }
+
+                    if ( '' === $poster ) {
+                        $poster = $this->settings->sanitize_url_value( wp_get_attachment_image_url( $attachment_id, 'full' ), '' );
+                    }
+                }
+
+                if ( '' !== $src ) {
+                    return array(
+                        'content_url'   => $src,
+                        'thumbnail_url' => $poster,
+                        'name'          => $name,
+                        'duration'      => $duration,
+                        'upload_date'   => $upload,
+                    );
+                }
+            }
+
+            if ( 'core/embed' === $block_name ) {
+                $attrs = isset( $block['attrs'] ) && is_array( $block['attrs'] ) ? $block['attrs'] : array();
+                $url   = isset( $attrs['url'] ) ? $this->settings->sanitize_url_value( $attrs['url'], '' ) : '';
+                $name  = isset( $attrs['title'] ) ? sanitize_text_field( $attrs['title'] ) : '';
+
+                $iframe = isset( $block['innerHTML'] ) ? $this->extract_video_from_html( (string) $block['innerHTML'] ) : array();
+
+                if ( empty( $iframe ) && '' !== $url ) {
+                    $iframe = $this->derive_embed_data_from_url( $url );
+                }
+
+                if ( ! empty( $iframe ) ) {
+                    if ( '' === $name && '' !== ( $attrs['url'] ?? '' ) ) {
+                        $name = sanitize_text_field( wp_strip_all_tags( (string) $attrs['url'] ) );
+                    }
+
+                    $iframe['name'] = $iframe['name'] ?? $name;
+
+                    return $iframe;
+                }
+            }
+
+            if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
+                $child = $this->extract_video_from_blocks( $block['innerBlocks'] );
+                if ( ! empty( $child ) ) {
+                    return $child;
+                }
+            }
+        }
+
+        return array();
+    }
+
+    /**
+     * Extract video data from raw HTML markup.
+     *
+     * @param string $html Raw HTML content.
+     *
+     * @return array<string,string>
+     */
+    protected function extract_video_from_html( string $html ): array {
+        if ( '' === trim( $html ) ) {
+            return array();
+        }
+
+        if ( preg_match( '/<iframe[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $html, $matches ) ) {
+            $embed_url = $this->settings->sanitize_url_value( $matches[1], '' );
+            if ( '' !== $embed_url ) {
+                $thumbnail = '';
+
+                if ( false !== stripos( $embed_url, 'youtube.com' ) || false !== stripos( $embed_url, 'youtu.be' ) ) {
+                    $youtube = $this->derive_embed_data_from_url( $embed_url );
+                    if ( ! empty( $youtube['thumbnail_url'] ) ) {
+                        $thumbnail = $youtube['thumbnail_url'];
+                    }
+                }
+
+                return array(
+                    'embed_url'     => $embed_url,
+                    'thumbnail_url' => $thumbnail,
+                );
+            }
+        }
+
+        if ( preg_match( '/<video[^>]*>(.*?)<\/video>/is', $html, $video_matches ) ) {
+            $video_tag = $video_matches[0];
+
+            if ( preg_match( '/poster=["\']([^"\']+)["\']/', $video_tag, $poster_match ) ) {
+                $poster = $this->settings->sanitize_url_value( $poster_match[1], '' );
+            } else {
+                $poster = '';
+            }
+
+            if ( preg_match( '/src=["\']([^"\']+)["\']/', $video_tag, $src_match ) ) {
+                $content_url = $this->settings->sanitize_url_value( $src_match[1], '' );
+
+                if ( '' !== $content_url ) {
+                    return array(
+                        'content_url'   => $content_url,
+                        'thumbnail_url' => $poster,
+                    );
+                }
+            }
+        }
+
+        return array();
+    }
+
+    /**
+     * Derive embed data for known providers from a raw URL.
+     *
+     * @param string $url Video URL.
+     *
+     * @return array<string,string>
+     */
+    protected function derive_embed_data_from_url( string $url ): array {
+        $parsed = wp_parse_url( $url );
+
+        if ( empty( $parsed['host'] ) ) {
+            return array();
+        }
+
+        $host = strtolower( $parsed['host'] );
+
+        if ( false !== strpos( $host, 'youtube.com' ) || false !== strpos( $host, 'youtu.be' ) ) {
+            $video_id = '';
+
+            if ( false !== strpos( $host, 'youtu.be' ) && ! empty( $parsed['path'] ) ) {
+                $video_id = ltrim( (string) $parsed['path'], '/' );
+            } elseif ( ! empty( $parsed['path'] ) && false !== strpos( (string) $parsed['path'], '/embed/' ) ) {
+                $video_id = trim( str_replace( '/embed/', '', (string) $parsed['path'] ), '/' );
+            } elseif ( ! empty( $parsed['query'] ) ) {
+                parse_str( (string) $parsed['query'], $params );
+                if ( ! empty( $params['v'] ) ) {
+                    $video_id = (string) $params['v'];
+                }
+            }
+
+            $video_id = trim( $video_id );
+
+            if ( '' === $video_id ) {
+                return array();
+            }
+
+            $embed_url = sprintf( 'https://www.youtube.com/embed/%s', rawurlencode( $video_id ) );
+            $thumbnail = sprintf( 'https://img.youtube.com/vi/%s/hqdefault.jpg', rawurlencode( $video_id ) );
+
+            return array(
+                'embed_url'     => $embed_url,
+                'thumbnail_url' => $thumbnail,
+            );
+        }
+
+        if ( false !== strpos( $host, 'vimeo.com' ) ) {
+            $path = isset( $parsed['path'] ) ? trim( (string) $parsed['path'], '/' ) : '';
+
+            if ( '' === $path ) {
+                return array();
+            }
+
+            if ( false !== strpos( $host, 'player.vimeo.com' ) ) {
+                $video_id = $path;
+            } else {
+                $segments = explode( '/', $path );
+                $video_id = end( $segments );
+            }
+
+            if ( '' === $video_id ) {
+                return array();
+            }
+
+            $embed_url = sprintf( 'https://player.vimeo.com/video/%s', rawurlencode( $video_id ) );
+
+            return array(
+                'embed_url' => $embed_url,
+            );
+        }
+
+        return array();
+    }
+
+    /**
+     * Build the URL to a file inside the uploads directory from a relative path.
+     *
+     * @param string $relative_path Relative file path.
+     *
+     * @return string
+     */
+    protected function build_upload_url_from_path( string $relative_path ): string {
+        if ( '' === $relative_path ) {
+            return '';
+        }
+
+        $uploads = wp_get_upload_dir();
+
+        if ( empty( $uploads['baseurl'] ) ) {
+            return '';
+        }
+
+        return trailingslashit( $uploads['baseurl'] ) . ltrim( $relative_path, '/' );
+    }
+
+    /**
+     * Convert a duration in seconds to an ISO8601 string.
+     *
+     * @param int $seconds Duration in seconds.
+     *
+     * @return string
+     */
+    protected function format_duration_from_seconds( int $seconds ): string {
+        if ( $seconds <= 0 ) {
+            return '';
+        }
+
+        $interval = 'PT';
+
+        $hours = (int) floor( $seconds / 3600 );
+        if ( $hours > 0 ) {
+            $interval .= $hours . 'H';
+        }
+
+        $minutes = (int) floor( ( $seconds % 3600 ) / 60 );
+        if ( $minutes > 0 ) {
+            $interval .= $minutes . 'M';
+        }
+
+        $remaining_seconds = $seconds % 60;
+        if ( $remaining_seconds > 0 || 'PT' === $interval ) {
+            $interval .= $remaining_seconds . 'S';
+        }
+
+        return $interval;
+    }
+
+    /**
+     * Build the ImageObject node with metadata when available.
+     *
+     * @param string $image_url Image URL.
+     * @param string $image_id  Image node ID.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_image_object( string $image_url, string $image_id ): array {
+        if ( '' === $image_url ) {
+            return array();
+        }
+
+        $image = array(
+            '@type' => 'ImageObject',
+            '@id'   => $image_id,
+            'url'   => $image_url,
+        );
+
+        $attachment_id = attachment_url_to_postid( $image_url );
+
+        if ( $attachment_id ) {
+            $metadata = wp_get_attachment_metadata( $attachment_id );
+
+            if ( is_array( $metadata ) ) {
+                if ( isset( $metadata['width'] ) && is_numeric( $metadata['width'] ) ) {
+                    $image['width'] = (int) $metadata['width'];
+                }
+
+                if ( isset( $metadata['height'] ) && is_numeric( $metadata['height'] ) ) {
+                    $image['height'] = (int) $metadata['height'];
+                }
+            }
+
+            $caption = wp_get_attachment_caption( $attachment_id );
+            if ( is_string( $caption ) && '' !== trim( $caption ) ) {
+                $image['caption'] = wp_strip_all_tags( $caption );
+            }
+        }
+
+        return $image;
+    }
+
+    /**
+     * Build VideoObject node for the graph.
+     *
+     * @param array<string,string> $video_data     Video data.
+     * @param string               $video_id       Video node ID.
+     * @param array{headline:string,description:string,image:string,video:array<string,string>} $values Schema values.
+     * @param string               $organization_id Organization node ID.
+     * @param WP_Post              $post           Post object.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_video_object( array $video_data, string $video_id, array $values, string $organization_id, WP_Post $post ): array {
+        if ( empty( $video_data['embed_url'] ) && empty( $video_data['content_url'] ) ) {
+            return array();
+        }
+
+        $video = array(
+            '@type'     => 'VideoObject',
+            '@id'       => $video_id,
+            'publisher' => array( '@id' => $organization_id ),
+        );
+
+        $name = $video_data['name'];
+
+        if ( '' === $name ) {
+            $name = $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) );
+        }
+
+        if ( '' !== $name ) {
+            $video['name'] = $name;
+        }
+
+        $description = $video_data['description'];
+
+        if ( '' === $description ) {
+            $description = $values['description'];
+        }
+
+        if ( '' !== $description ) {
+            $video['description'] = $description;
+        }
+
+        if ( '' !== $video_data['embed_url'] ) {
+            $video['embedUrl'] = $video_data['embed_url'];
+        }
+
+        if ( '' !== $video_data['content_url'] ) {
+            $video['contentUrl'] = $video_data['content_url'];
+        }
+
+        if ( '' !== $video_data['thumbnail_url'] ) {
+            $video['thumbnailUrl'] = array( $video_data['thumbnail_url'] );
+        } elseif ( '' !== $values['image'] ) {
+            $video['thumbnailUrl'] = array( $values['image'] );
+        }
+
+        if ( '' !== $video_data['duration'] ) {
+            $video['duration'] = $video_data['duration'];
+        }
+
+        $upload_date = $video_data['upload_date'];
+
+        if ( '' === $upload_date ) {
+            $upload_date = get_post_time( DATE_W3C, true, $post );
+        }
+
+        if ( $upload_date ) {
+            $video['uploadDate'] = $upload_date;
+        }
+
+        return $video;
     }
 
     /**
