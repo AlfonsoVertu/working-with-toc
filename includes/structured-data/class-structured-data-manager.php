@@ -1182,14 +1182,14 @@ class Structured_Data_Manager {
             return array();
         }
 
-        $embed_url   = isset( $video['embed_url'] ) ? $this->settings->sanitize_url_value( $video['embed_url'], '' ) : '';
-        $content_url = isset( $video['content_url'] ) ? $this->settings->sanitize_url_value( $video['content_url'], '' ) : '';
+        $embed_url   = isset( $video['embed_url'] ) ? $this->settings->sanitize_url( $video['embed_url'], '' ) : '';
+        $content_url = isset( $video['content_url'] ) ? $this->settings->sanitize_url( $video['content_url'], '' ) : '';
 
         if ( '' === $embed_url && '' === $content_url ) {
             return array();
         }
 
-        $thumbnail = isset( $video['thumbnail_url'] ) ? $this->settings->sanitize_url_value( $video['thumbnail_url'], '' ) : '';
+        $thumbnail = isset( $video['thumbnail_url'] ) ? $this->settings->sanitize_url( $video['thumbnail_url'], '' ) : '';
         $name      = isset( $video['name'] ) ? sanitize_text_field( $video['name'] ) : '';
         $duration  = isset( $video['duration'] ) ? sanitize_text_field( $video['duration'] ) : '';
         $upload    = isset( $video['upload_date'] ) ? sanitize_text_field( $video['upload_date'] ) : '';
@@ -1224,8 +1224,8 @@ class Structured_Data_Manager {
             if ( 'core/video' === $block_name ) {
                 $attrs = isset( $block['attrs'] ) && is_array( $block['attrs'] ) ? $block['attrs'] : array();
 
-                $src      = isset( $attrs['src'] ) ? $this->settings->sanitize_url_value( $attrs['src'], '' ) : '';
-                $poster   = isset( $attrs['poster'] ) ? $this->settings->sanitize_url_value( $attrs['poster'], '' ) : '';
+                $src      = isset( $attrs['src'] ) ? $this->settings->sanitize_url( $attrs['src'], '' ) : '';
+                $poster   = isset( $attrs['poster'] ) ? $this->settings->sanitize_url( $attrs['poster'], '' ) : '';
                 $name     = isset( $attrs['title'] ) ? sanitize_text_field( $attrs['title'] ) : '';
                 $duration = '';
                 $upload   = '';
@@ -1234,7 +1234,7 @@ class Structured_Data_Manager {
                     $attachment_id = (int) $attrs['id'];
 
                     if ( '' === $src ) {
-                        $src = $this->settings->sanitize_url_value( wp_get_attachment_url( $attachment_id ), '' );
+                        $src = $this->settings->sanitize_url( wp_get_attachment_url( $attachment_id ), '' );
                     }
 
                     if ( '' === $name ) {
@@ -1248,7 +1248,7 @@ class Structured_Data_Manager {
 
                     if ( is_array( $metadata ) ) {
                         if ( '' === $poster && isset( $metadata['image']['src'] ) ) {
-                            $poster = $this->settings->sanitize_url_value( $this->build_upload_url_from_path( (string) $metadata['image']['src'] ), '' );
+                            $poster = $this->settings->sanitize_url( $this->build_upload_url_from_path( (string) $metadata['image']['src'] ), '' );
                         }
 
                         if ( isset( $metadata['length'] ) && is_numeric( $metadata['length'] ) && (int) $metadata['length'] > 0 ) {
@@ -1261,7 +1261,7 @@ class Structured_Data_Manager {
                     }
 
                     if ( '' === $poster ) {
-                        $poster = $this->settings->sanitize_url_value( wp_get_attachment_image_url( $attachment_id, 'full' ), '' );
+                        $poster = $this->settings->sanitize_url( wp_get_attachment_image_url( $attachment_id, 'full' ), '' );
                     }
                 }
 
@@ -1278,7 +1278,7 @@ class Structured_Data_Manager {
 
             if ( 'core/embed' === $block_name ) {
                 $attrs = isset( $block['attrs'] ) && is_array( $block['attrs'] ) ? $block['attrs'] : array();
-                $url   = isset( $attrs['url'] ) ? $this->settings->sanitize_url_value( $attrs['url'], '' ) : '';
+                $url   = isset( $attrs['url'] ) ? $this->settings->sanitize_url( $attrs['url'], '' ) : '';
                 $name  = isset( $attrs['title'] ) ? sanitize_text_field( $attrs['title'] ) : '';
 
                 $iframe = isset( $block['innerHTML'] ) ? $this->extract_video_from_html( (string) $block['innerHTML'] ) : array();
@@ -1322,7 +1322,7 @@ class Structured_Data_Manager {
         }
 
         if ( preg_match( '/<iframe[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $html, $matches ) ) {
-            $embed_url = $this->settings->sanitize_url_value( $matches[1], '' );
+            $embed_url = $this->settings->sanitize_url( $matches[1], '' );
             if ( '' !== $embed_url ) {
                 $thumbnail = '';
 
@@ -1344,13 +1344,13 @@ class Structured_Data_Manager {
             $video_tag = $video_matches[0];
 
             if ( preg_match( '/poster=["\']([^"\']+)["\']/', $video_tag, $poster_match ) ) {
-                $poster = $this->settings->sanitize_url_value( $poster_match[1], '' );
+                $poster = $this->settings->sanitize_url( $poster_match[1], '' );
             } else {
                 $poster = '';
             }
 
             if ( preg_match( '/src=["\']([^"\']+)["\']/', $video_tag, $src_match ) ) {
-                $content_url = $this->settings->sanitize_url_value( $src_match[1], '' );
+                $content_url = $this->settings->sanitize_url( $src_match[1], '' );
 
                 if ( '' !== $content_url ) {
                     return array(
