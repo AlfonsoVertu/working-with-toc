@@ -842,6 +842,24 @@ class Structured_Data_Manager {
             $product_node = $this->build_product_node( $post, $values, $webpage_id, $image_id, $permalink );
 
             if ( ! empty( $product_node ) ) {
+                $product_id = is_string( $product_node['@id'] ?? null ) ? $product_node['@id'] : '';
+
+                if ( '' !== $product_id && '' !== $item_list_id ) {
+                    $has_part = $this->normalize_reference_list( $product_node['hasPart'] ?? array() );
+                    $has_part = $this->add_reference_if_missing( $has_part, $item_list_id );
+
+                    if ( ! empty( $has_part ) ) {
+                        $product_node['hasPart'] = $has_part;
+                    }
+
+                    $item_list_is_part_of = $this->normalize_reference_list( $item_list['isPartOf'] ?? array() );
+                    $item_list_is_part_of = $this->add_reference_if_missing( $item_list_is_part_of, $product_id );
+
+                    if ( ! empty( $item_list_is_part_of ) ) {
+                        $item_list['isPartOf'] = $item_list_is_part_of;
+                    }
+                }
+
                 $graph[] = $product_node;
             }
         } elseif ( 'WebPage' !== $article_type ) {
