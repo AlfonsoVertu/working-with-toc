@@ -84,6 +84,10 @@ This makes the **Working with TOC** page available to any user with the `edit_ot
 
 The TOC appears in an accordion anchored to the bottom edge of the viewport. Visitors can open or collapse it instantly; when expanded, the content scrolls inside a slide-up panel with dynamic highlighting powered by `IntersectionObserver`.
 
+### FAQ data attributes
+
+When FAQ mode is enabled for specific headings, the parser annotates the matched elements so JavaScript and CSS can easily target them. Headings receive the `wwt-faq-question` class along with `data-faq="question"`, while the first matching answer container gains the `wwt-faq-answer` class and `data-faq-answer="true"`. These attributes replace the legacy `data-wwt-faq` markers and are applied directly by `Heading_Parser::parse()` so templates and structured data builders can rely on a consistent contract.
+
 ## SEO Compatibility
 
 - **Rank Math** – the plugin registers itself among supported TOCs, preventing the “No TOC plugin installed” warning.
