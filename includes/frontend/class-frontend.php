@@ -68,6 +68,10 @@ class Frontend {
             WWTOC_VERSION
         );
 
+        if ( $this->is_amp_request() ) {
+            return;
+        }
+
         wp_enqueue_script(
             'wwt-toc-frontend',
             WWT_TOC_PLUGIN_URL . 'assets/js/frontend.js',
@@ -156,7 +160,12 @@ class Frontend {
             return $content;
         }
 
-        $toc_markup = $this->build_toc_markup( $headings, $preferences, (int) $post->ID );
+        $toc_markup = $this->build_toc_markup(
+            $headings,
+            $preferences,
+            (int) $post->ID,
+            $this->is_amp_request()
+        );
 
         $shortcode_present = false;
 
@@ -189,13 +198,18 @@ class Frontend {
     /**
      * Build TOC markup.
      *
-     * @param array<int,array{title:string,id:string,level:int}> $headings    Headings list.
-     * @param array<string,mixed>                               $preferences TOC preferences.
-     * @param int                                               $post_id     Current post ID.
+     * @param array<int,array{title:string,id:string,level:int}> $headings         Headings list.
+     * @param array<string,mixed>                               $preferences      TOC preferences.
+     * @param int                                               $post_id          Current post ID.
+     * @param bool                                              $use_static_layout Whether the markup should avoid JS toggles.
      *
      * @return string
      */
-    protected function build_toc_markup( array $headings, array $preferences, int $post_id ): string {
+    protected function build_toc_markup( array $headings, array $preferences, int $post_id, bool $use_static_layout = false ): string {
+        if ( $use_static_layout ) {
+            return $this->build_static_toc_markup( $headings, $preferences, $post_id );
+        }
+
         $items = '';
         foreach ( $headings as $heading ) {
             $indent = max( 0, $heading['level'] - 2 );
@@ -278,6 +292,81 @@ class Frontend {
     }
 
     /**
+     * Build a static TOC markup that works without JavaScript listeners.
+     *
+     * @param array<int,array{title:string,id:string,level:int}> $headings    Headings list.
+     * @param array<string,mixed>                               $preferences TOC preferences.
+     * @param int                                               $post_id     Current post ID.
+     *
+     * @return string
+     */
+    protected function build_static_toc_markup( array $headings, array $preferences, int $post_id ): string {
+        $items = '';
+        foreach ( $headings as $heading ) {
+            $indent = max( 0, $heading['level'] - 2 );
+            $items .= sprintf(
+                '<li class="wwt-level-%1$d"><a href="#%2$s">%3$s</a></li>',
+                (int) $indent,
+                esc_attr( $heading['id'] ),
+                esc_html( $heading['title'] )
+            );
+        }
+
+        $label = isset( $preferences['title'] ) && '' !== trim( $preferences['title'] )
+            ? $preferences['title']
+            : __( 'Table of contents', 'working-with-toc' );
+
+        $container_id         = $this->get_container_id( $post_id );
+        $summary_id           = $container_id . '-summary';
+        $content_id           = $container_id . '-content';
+        $container_attributes = $this->build_container_attributes( $preferences, $post_id, false );
+        $summary_attributes   = $this->stringify_attributes(
+            array(
+                'id'            => $summary_id,
+                'class'         => 'wwt-toc-summary',
+                'aria-controls' => $content_id,
+            )
+        );
+        $content_attributes   = $this->stringify_attributes(
+            array(
+                'id'              => $content_id,
+                'class'           => 'wwt-toc-content',
+                'aria-labelledby' => $summary_id,
+            )
+        );
+
+        $style_override = $this->build_custom_title_style( $preferences, $summary_id );
+
+        $markup = sprintf(
+            '<div %1$s>' .
+                '<details class="wwt-toc-accordion" open>' .
+                    '<summary %2$s>' .
+                        '<span class="wwt-toc-summary-text">%3$s</span>' .
+                        '<span class="wwt-toc-icon" aria-hidden="true"></span>' .
+                    '</summary>' .
+                    '<div %4$s>' .
+                        '<nav class="wwt-toc-nav" aria-label="%5$s" role="doc-toc">' .
+                            '<ol class="wwt-toc-list">%6$s</ol>' .
+                        '</nav>' .
+                    '</div>' .
+                '</details>' .
+            '</div>',
+            $container_attributes,
+            $summary_attributes,
+            esc_html( $label ),
+            $content_attributes,
+            esc_attr( $label ),
+            $items
+        );
+
+        if ( '' !== $style_override ) {
+            $markup = $style_override . "\n" . $markup;
+        }
+
+        return $markup;
+    }
+
+    /**
      * Filter headings according to the excluded list.
      *
      * @param array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}> $headings Headings list.
@@ -338,10 +427,11 @@ class Frontend {
     /**
      * Build the attribute string applied to the TOC container element.
      *
-     * @param array<string,mixed> $preferences TOC preferences.
-     * @param int                 $post_id     Current post ID.
+     * @param array<string,mixed> $preferences   TOC preferences.
+     * @param int                 $post_id       Current post ID.
+     * @param bool                $is_interactive Whether the container expects JS listeners.
      */
-    protected function build_container_attributes( array $preferences, int $post_id ): string {
+    protected function build_container_attributes( array $preferences, int $post_id, bool $is_interactive = true ): string {
         $post_id = absint( $post_id );
         $id      = $this->get_container_id( $post_id );
 
@@ -359,13 +449,17 @@ class Frontend {
         }
 
         $attributes = array(
-            'id'            => $id,
-            'class'         => 'wwt-toc-container',
-            'data-wwt-toc'  => 'true',
-            'data-expanded' => 'true',
-            'data-align-x'  => $horizontal,
-            'data-align-y'  => $vertical,
+            'id'               => $id,
+            'class'            => 'wwt-toc-container',
+            'data-align-x'     => $horizontal,
+            'data-align-y'     => $vertical,
+            'data-render-mode' => $is_interactive ? 'interactive' : 'static',
         );
+
+        if ( $is_interactive ) {
+            $attributes['data-wwt-toc']  = 'true';
+            $attributes['data-expanded'] = 'true';
+        }
 
         $style = $this->build_inline_styles( $preferences );
         if ( '' !== $style ) {
@@ -403,6 +497,21 @@ class Frontend {
     }
 
     /**
+     * Determine whether the current request is served in AMP mode.
+     */
+    protected function is_amp_request(): bool {
+        if ( function_exists( 'is_amp_endpoint' ) && is_amp_endpoint() ) {
+            return true;
+        }
+
+        if ( function_exists( 'amp_is_request' ) && amp_is_request() ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Convert an attribute array into a HTML attribute string.
      *
      * @param array<string,string> $attributes Attributes list.
@@ -425,9 +534,9 @@ class Frontend {
      * Build an inline style block that enforces title colors when custom values are used.
      *
      * @param array<string,mixed> $preferences Style preferences.
-     * @param string              $toggle_id   Toggle element ID.
+     * @param string              $element_id  Control element ID.
      */
-    protected function build_custom_title_style( array $preferences, string $toggle_id ): string {
+    protected function build_custom_title_style( array $preferences, string $element_id ): string {
         if ( empty( $preferences['has_custom_title_colors'] ) ) {
             return '';
         }
@@ -446,12 +555,12 @@ class Frontend {
             return '';
         }
 
-        $style_id = $toggle_id . '-style';
+        $style_id = $element_id . '-style';
 
         return sprintf(
             '<style id="%1$s">#%2$s{%3$s}</style>',
             esc_attr( $style_id ),
-            esc_attr( $toggle_id ),
+            esc_attr( $element_id ),
             esc_html( implode( '', $rules ) )
         );
     }

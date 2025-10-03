@@ -88,6 +88,12 @@ The TOC appears in an accordion anchored to the bottom edge of the viewport. Vis
 
 When FAQ mode is enabled for specific headings, the parser annotates the matched elements so JavaScript and CSS can easily target them. Headings receive the `wwt-faq-question` class along with `data-faq="question"`, while the first matching answer container gains the `wwt-faq-answer` class and `data-faq-answer="true"`. These attributes replace the legacy `data-wwt-faq` markers and are applied directly by `Heading_Parser::parse()` so templates and structured data builders can rely on a consistent contract.
 
+### AMP compatibility
+
+The frontend now detects AMP requests (using `is_amp_endpoint()` or `amp_is_request()` when available) and renders an accessible, always-on TOC without relying on JavaScript listeners. In AMP mode the plugin skips loading `assets/js/frontend.js` and swaps the floating container for a `<details>`-based layout that keeps the toggle keyboard-accessible while remaining open by default. This ensures the TOC remains usable in AMP caches and any environment where scripts are disallowed.【F:includes/frontend/class-frontend.php†L43-L120】【F:assets/css/frontend.css†L1-L160】
+
+> **Manual regression:** Install the official AMP plugin in *Transitional* mode, load any single post both in canonical and `?amp` views, and verify that the AMP endpoint shows the expanded TOC without enqueued JavaScript while the canonical page retains the interactive floating accordion.
+
 ## SEO Compatibility
 
 - **Rank Math** – the plugin registers itself among supported TOCs, preventing the “No TOC plugin installed” warning.
