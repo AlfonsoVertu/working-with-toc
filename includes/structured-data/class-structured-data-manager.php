@@ -832,14 +832,13 @@ class Structured_Data_Manager {
             }
         }
 
-        $graph[] = $webpage;
-
-        if ( ! empty( $breadcrumb['itemListElement'] ) ) {
-            $graph[] = $breadcrumb;
-        }
+        $product_node = array();
+        $article_node = array();
 
         if ( 'product' === $post->post_type ) {
             $product_node = $this->build_product_node( $post, $values, $webpage_id, $image_id, $permalink );
+
+            $parent_ids = array();
 
             if ( ! empty( $product_node ) ) {
                 $product_id = is_string( $product_node['@id'] ?? null ) ? $product_node['@id'] : '';
@@ -852,19 +851,27 @@ class Structured_Data_Manager {
                         $product_node['hasPart'] = $has_part;
                     }
 
-                    $item_list_is_part_of = $this->normalize_reference_list( $item_list['isPartOf'] ?? array() );
-                    $item_list_is_part_of = $this->add_reference_if_missing( $item_list_is_part_of, $product_id );
+                    $parent_ids[] = $product_id;
+                }
+            }
 
-                    if ( ! empty( $item_list_is_part_of ) ) {
-                        $item_list['isPartOf'] = $item_list_is_part_of;
-                    }
+            if ( empty( $parent_ids ) && '' !== $item_list_id ) {
+                $webpage_has_part = $this->normalize_reference_list( $webpage['hasPart'] ?? array() );
+                $webpage_has_part = $this->add_reference_if_missing( $webpage_has_part, $item_list_id );
+
+                if ( ! empty( $webpage_has_part ) ) {
+                    $webpage['hasPart'] = $webpage_has_part;
                 }
 
-                $graph[] = $product_node;
+                $parent_ids[] = $webpage_id;
+            }
+
+            if ( ! empty( $parent_ids ) ) {
+                $item_list = $this->link_item_list_to_parents( $item_list, $parent_ids );
             }
         } elseif ( 'WebPage' !== $article_type ) {
-            $article_id = $permalink . '#article';
-            $article    = array(
+            $article_id   = $permalink . '#article';
+            $article_node = array(
                 '@type'            => $article_type,
                 '@id'              => $article_id,
                 'headline'         => $values['headline'] ?: wp_strip_all_tags( get_the_title( $post ) ),
@@ -876,31 +883,31 @@ class Structured_Data_Manager {
             if ( ! empty( $faq ) ) {
                 $faq_id = is_string( $faq['@id'] ?? null ) ? $faq['@id'] : '';
                 if ( '' !== $faq_id ) {
-                    $article_main_entity = $this->normalize_reference_list( $article['mainEntity'] ?? array() );
+                    $article_main_entity = $this->normalize_reference_list( $article_node['mainEntity'] ?? array() );
                     $article_main_entity = $this->add_reference_if_missing( $article_main_entity, $faq_id );
 
                     if ( ! empty( $article_main_entity ) ) {
-                        $article['mainEntity'] = $article_main_entity;
+                        $article_node['mainEntity'] = $article_main_entity;
                     }
                 }
             }
 
             if ( '' !== $values['description'] ) {
-                $article['description'] = $values['description'];
+                $article_node['description'] = $values['description'];
             }
 
             if ( '' !== $values['image'] ) {
-                $article['image'] = array( '@id' => $image_id );
+                $article_node['image'] = array( '@id' => $image_id );
             }
 
             $published = get_post_time( DATE_W3C, true, $post );
             if ( $published ) {
-                $article['datePublished'] = $published;
+                $article_node['datePublished'] = $published;
             }
 
             $modified = get_post_modified_time( DATE_W3C, true, $post );
             if ( $modified ) {
-                $article['dateModified'] = $modified;
+                $article_node['dateModified'] = $modified;
             }
 
             $author_name = get_the_author_meta( 'display_name', $post->post_author );
@@ -915,12 +922,22 @@ class Structured_Data_Manager {
                     $author['url'] = $author_url;
                 }
 
-                $article['author'] = $author;
+                $article_node['author'] = $author;
             }
 
-            $article['publisher'] = array( '@id' => $organization_id );
+            $article_node['publisher'] = array( '@id' => $organization_id );
+        }
 
-            $graph[] = $article;
+        $graph[] = $webpage;
+
+        if ( ! empty( $breadcrumb['itemListElement'] ) ) {
+            $graph[] = $breadcrumb;
+        }
+
+        if ( ! empty( $product_node ) ) {
+            $graph[] = $product_node;
+        } elseif ( ! empty( $article_node ) ) {
+            $graph[] = $article_node;
         }
 
         if ( '' !== $values['image'] ) {
