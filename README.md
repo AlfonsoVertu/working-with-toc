@@ -90,9 +90,9 @@ When FAQ mode is enabled for specific headings, the parser annotates the matched
 
 ### AMP compatibility
 
-The frontend now detects AMP requests (using `is_amp_endpoint()` or `amp_is_request()` when available) and renders an accessible, always-on TOC without relying on JavaScript listeners. In AMP mode the plugin skips loading `assets/js/frontend.js` and swaps the floating container for a `<details>`-based layout that keeps the toggle keyboard-accessible while remaining open by default. This ensures the TOC remains usable in AMP caches and any environment where scripts are disallowed.【F:includes/frontend/class-frontend.php†L43-L120】【F:assets/css/frontend.css†L1-L160】
+The frontend now detects AMP requests (using `is_amp_endpoint()` or `amp_is_request()` when available) and renders an accessible, always-on TOC without relying on JavaScript listeners. In AMP mode the plugin skips loading `assets/js/frontend.js`, swaps the floating container for a `<details>`-based layout that keeps the toggle keyboard-accessible while remaining open by default, and assigns a deterministic `wwt-color-scheme-{hash}` class so colors are sourced from the enqueued stylesheet instead of inline attributes. This ensures AMP markup remains valid while preserving the configured palette through CSS custom properties defined in `assets/css/frontend.css`.【F:includes/frontend/class-frontend.php†L43-L120】【F:includes/frontend/class-frontend.php†L245-L366】【F:assets/css/frontend.css†L1-L120】
 
-> **Manual regression:** Install the official AMP plugin in *Transitional* mode, load any single post both in canonical and `?amp` views, and verify that the AMP endpoint shows the expanded TOC without enqueued JavaScript while the canonical page retains the interactive floating accordion.
+> **Manual regression:** Install the official AMP plugin in *Transitional* mode, load any single post both in canonical and `?amp` views, and verify that the AMP endpoint shows the expanded TOC without enqueued JavaScript or inline `style` attributes in the TOC markup while the canonical page retains the interactive floating accordion and inline custom properties for JS-driven behavior.【F:includes/frontend/class-frontend.php†L57-L109】【F:includes/frontend/class-frontend.php†L245-L366】
 
 ## SEO Compatibility
 

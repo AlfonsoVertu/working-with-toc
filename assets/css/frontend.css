@@ -26,6 +26,23 @@
     transform: translate3d(var(--wwt-toc-translate-x), var(--wwt-toc-translate-y), 0);
 }
 
+.wwt-toc-container[data-render-mode="static"][class*="wwt-color-scheme-"] {
+    background-color: var(--wwt-toc-bg) !important;
+    color: var(--wwt-toc-text) !important;
+}
+
+.wwt-toc-container[data-render-mode="static"][class*="wwt-color-scheme-"] .wwt-toc-header,
+.wwt-toc-container[data-render-mode="static"][class*="wwt-color-scheme-"] .wwt-toc-summary {
+    background: var(--wwt-toc-title-bg) !important;
+    color: var(--wwt-toc-title-color) !important;
+}
+
+.wwt-toc-container[data-render-mode="static"][class*="wwt-color-scheme-"] .wwt-toc-list a:hover,
+.wwt-toc-container[data-render-mode="static"][class*="wwt-color-scheme-"] .wwt-toc-list a:focus,
+.wwt-toc-container[data-render-mode="static"][class*="wwt-color-scheme-"] .wwt-toc-list a.is-active {
+    color: var(--wwt-toc-link);
+}
+
 .wwt-has-custom-title-colors .wwt-toc-header,
 .wwt-has-custom-title-colors .wwt-toc-summary {
     background: var(--wwt-toc-title-bg) !important;
