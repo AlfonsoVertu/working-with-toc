@@ -16,11 +16,27 @@ use Working_With_TOC\Logger;
 use Working_With_TOC\Heading_Parser;
 use Working_With_TOC\Settings;
 use function Working_With_TOC\is_domdocument_missing;
+use function sanitize_html_class;
+use function wp_json_encode;
 
 /**
  * Handles TOC injection and assets.
  */
 class Frontend {
+
+    /**
+     * AMP color schemes keyed by generated class names.
+     *
+     * @var array<string,array<string,string>>
+     */
+    protected $amp_color_schemes = array();
+
+    /**
+     * Cached AMP color scheme class assigned to each post ID.
+     *
+     * @var array<int,string>
+     */
+    protected $amp_post_color_class = array();
 
     /**
      * Shortcode tag.
@@ -68,7 +84,15 @@ class Frontend {
             WWTOC_VERSION
         );
 
-        if ( $this->is_amp_request() ) {
+        if ( $post instanceof WP_Post && $this->is_amp_request() ) {
+            $preferences = $this->settings->get_post_preferences( $post );
+            $class       = $this->get_amp_color_scheme_class( $preferences, (int) $post->ID );
+            $css         = $this->build_amp_color_scheme_css();
+
+            if ( null !== $class && '' !== $css ) {
+                wp_add_inline_style( 'wwt-toc-frontend', $css );
+            }
+
             return;
         }
 
@@ -316,10 +340,17 @@ class Frontend {
             ? $preferences['title']
             : __( 'Table of contents', 'working-with-toc' );
 
-        $container_id         = $this->get_container_id( $post_id );
-        $summary_id           = $container_id . '-summary';
-        $content_id           = $container_id . '-content';
-        $container_attributes = $this->build_container_attributes( $preferences, $post_id, false );
+        $container_id = $this->get_container_id( $post_id );
+        $summary_id   = $container_id . '-summary';
+        $content_id   = $container_id . '-content';
+
+        $extra_classes = array();
+        $amp_color_class = $this->get_amp_color_scheme_class( $preferences, $post_id );
+        if ( null !== $amp_color_class ) {
+            $extra_classes[] = $amp_color_class;
+        }
+
+        $container_attributes = $this->build_container_attributes( $preferences, $post_id, false, $extra_classes );
         $summary_attributes   = $this->stringify_attributes(
             array(
                 'id'            => $summary_id,
@@ -427,11 +458,12 @@ class Frontend {
     /**
      * Build the attribute string applied to the TOC container element.
      *
-     * @param array<string,mixed> $preferences   TOC preferences.
-     * @param int                 $post_id       Current post ID.
+     * @param array<string,mixed> $preferences    TOC preferences.
+     * @param int                 $post_id        Current post ID.
      * @param bool                $is_interactive Whether the container expects JS listeners.
+     * @param array<int,string>   $extra_classes  Additional classes to append to the container.
      */
-    protected function build_container_attributes( array $preferences, int $post_id, bool $is_interactive = true ): string {
+    protected function build_container_attributes( array $preferences, int $post_id, bool $is_interactive = true, array $extra_classes = array() ): string {
         $post_id = absint( $post_id );
         $id      = $this->get_container_id( $post_id );
 
@@ -454,9 +486,27 @@ class Frontend {
             $classes[] = 'wwt-has-custom-title-colors';
         }
 
+        foreach ( $extra_classes as $extra_class ) {
+            if ( ! is_string( $extra_class ) || '' === $extra_class ) {
+                continue;
+            }
+
+            $sanitized = sanitize_html_class( $extra_class );
+
+            if ( '' === $sanitized ) {
+                continue;
+            }
+
+            $classes[] = $sanitized;
+        }
+
+        $sanitized_classes = array_filter(
+            array_map( 'sanitize_html_class', $classes )
+        );
+
         $attributes = array(
             'id'               => $id,
-            'class'            => implode( ' ', $classes ),
+            'class'            => implode( ' ', $sanitized_classes ),
             'data-align-x'     => $horizontal,
             'data-align-y'     => $vertical,
             'data-render-mode' => $is_interactive ? 'interactive' : 'static',
@@ -468,7 +518,7 @@ class Frontend {
         }
 
         $style = $this->build_inline_styles( $preferences );
-        if ( '' !== $style ) {
+        if ( '' !== $style && ! $this->is_amp_request() ) {
             $attributes['style'] = $style;
         }
 
@@ -534,6 +584,116 @@ class Frontend {
         }
 
         return implode( ' ', $parts );
+    }
+
+    /**
+     * Retrieve the AMP color scheme class for the current post.
+     *
+     * @param array<string,mixed> $preferences Style preferences.
+     * @param int                 $post_id     Current post ID.
+     */
+    protected function get_amp_color_scheme_class( array $preferences, int $post_id ): ?string {
+        if ( ! $this->is_amp_request() ) {
+            return null;
+        }
+
+        $post_id = absint( $post_id );
+        if ( $post_id <= 0 ) {
+            return null;
+        }
+
+        if ( isset( $this->amp_post_color_class[ $post_id ] ) ) {
+            return $this->amp_post_color_class[ $post_id ];
+        }
+
+        $colors = $this->extract_color_preferences( $preferences );
+        if ( empty( $colors ) ) {
+            return null;
+        }
+
+        $hash_source = wp_json_encode( $colors );
+        if ( ! is_string( $hash_source ) ) {
+            return null;
+        }
+
+        $class = sanitize_html_class( 'wwt-color-scheme-' . substr( md5( $hash_source ), 0, 12 ) );
+
+        $this->amp_post_color_class[ $post_id ] = $class;
+        $this->amp_color_schemes[ $class ]      = $colors;
+
+        return $class;
+    }
+
+    /**
+     * Extract the color-related preferences that map to CSS custom properties.
+     *
+     * @param array<string,mixed> $preferences Style preferences.
+     *
+     * @return array<string,string>
+     */
+    protected function extract_color_preferences( array $preferences ): array {
+        $color_keys = array(
+            'background_color',
+            'text_color',
+            'link_color',
+            'title_background_color',
+            'title_color',
+        );
+
+        $colors = array();
+
+        foreach ( $color_keys as $key ) {
+            if ( empty( $preferences[ $key ] ) || ! is_string( $preferences[ $key ] ) ) {
+                continue;
+            }
+
+            $colors[ $key ] = $preferences[ $key ];
+        }
+
+        return $colors;
+    }
+
+    /**
+     * Build inline CSS rules that expose AMP-safe color schemes.
+     */
+    protected function build_amp_color_scheme_css(): string {
+        if ( empty( $this->amp_color_schemes ) ) {
+            return '';
+        }
+
+        $variable_map = array(
+            'background_color'       => '--wwt-toc-bg',
+            'text_color'             => '--wwt-toc-text',
+            'link_color'             => '--wwt-toc-link',
+            'title_background_color' => '--wwt-toc-title-bg',
+            'title_color'            => '--wwt-toc-title-color',
+        );
+
+        $rules = array();
+
+        foreach ( $this->amp_color_schemes as $class => $colors ) {
+            $declarations = array();
+
+            foreach ( $variable_map as $preference_key => $variable_name ) {
+                if ( empty( $colors[ $preference_key ] ) ) {
+                    continue;
+                }
+
+                $declarations[] = sprintf( '%1$s:%2$s;', $variable_name, $colors[ $preference_key ] );
+            }
+
+            if ( empty( $declarations ) ) {
+                continue;
+            }
+
+            $rules[] = sprintf(
+                '.wwt-toc-container.%1$s{%2$s}',
+                sanitize_html_class( $class ),
+                implode( '', $declarations )
+            );
+        }
+
+        return implode( '', $rules );
     }
 
     /**
