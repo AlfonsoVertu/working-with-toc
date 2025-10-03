@@ -26,7 +26,7 @@ class Heading_Parser {
      * @param string $content HTML content.
      * @param array  $options Parsing options.
      *
-     * @return array{headings:array<int,array{title:string,id:string,level:int,faq_excerpt?:string}>,content:string}
+     * @return array{headings:array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>,content:string}
      */
     public static function parse( string $content, array $options = array() ): array {
         if ( ! class_exists( \DOMDocument::class ) || is_domdocument_missing() ) {
@@ -99,6 +99,7 @@ class Heading_Parser {
 
                 $faq_data = array(
                     'excerpt'     => '',
+                    'full_text'   => '',
                     'answer_node' => null,
                 );
 
@@ -136,6 +137,7 @@ class Heading_Parser {
                     'id'          => $id,
                     'level'       => (int) substr( $node->nodeName, 1 ),
                     'faq_excerpt' => $faq_data['excerpt'],
+                    'faq_answer'  => $faq_data['full_text'],
                 );
             }
         }
@@ -157,12 +159,12 @@ class Heading_Parser {
     }
 
     /**
-     * Extract the FAQ excerpt and related node from the DOM.
+     * Extract the FAQ excerpt, full answer text, and related node from the DOM.
      *
      * @param DOMElement      $heading      Heading node currently being processed.
      * @param DOMElement|null $next_heading Next heading node in document order.
      *
-     * @return array{excerpt:string,answer_node:DOMElement|null}
+     * @return array{excerpt:string,full_text:string,answer_node:DOMElement|null}
      */
     protected static function extract_faq_data( DOMElement $heading, ?DOMElement $next_heading ): array {
         $text        = '';
@@ -221,6 +223,7 @@ class Heading_Parser {
 
         return array(
             'excerpt'     => self::prepare_excerpt( $text ),
+            'full_text'   => self::prepare_full_text( $text ),
             'answer_node' => $answer_node instanceof DOMElement ? $answer_node : null,
         );
     }
@@ -229,16 +232,7 @@ class Heading_Parser {
      * Normalise an excerpt string limiting its length.
      */
     protected static function prepare_excerpt( string $text ): string {
-        if ( '' === $text ) {
-            return '';
-        }
-
-        $text = wp_strip_all_tags( $text );
-        $text = trim( preg_replace( '/\s+/u', ' ', $text ) );
-
-        if ( '' === $text ) {
-            return '';
-        }
+        $text = self::prepare_full_text( $text );
 
         if ( function_exists( 'mb_substr' ) ) {
             $text = trim( mb_substr( $text, 0, 50 ) );
@@ -247,6 +241,24 @@ class Heading_Parser {
         }
 
         return $text;
+    }
+
+    /**
+     * Normalise the full answer text without truncating it.
+     */
+    protected static function prepare_full_text( string $text ): string {
+        if ( '' === $text ) {
+            return '';
+        }
+
+        $text = wp_strip_all_tags( $text );
+        $text = preg_replace( '/\s+/u', ' ', $text );
+
+        if ( ! is_string( $text ) ) {
+            $text = '';
+        }
+
+        return trim( (string) $text );
     }
 
     /**

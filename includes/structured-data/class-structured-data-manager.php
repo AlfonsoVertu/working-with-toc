@@ -502,7 +502,7 @@ class Structured_Data_Manager {
      * @param WP_Post             $post        Post object.
      * @param array<string,mixed> $preferences Style preferences for the post.
      *
-     * @return array{headings:array<int,array{title:string,url:string,id:string,faq_excerpt?:string}>,faq:array<int,array{question:string,answer:string,url:string,id:string}>}
+     * @return array{headings:array<int,array{title:string,url:string,id:string,faq_excerpt?:string,faq_answer?:string}>,faq:array<int,array{question:string,answer:string,url:string,id:string}>}
      */
     protected function collect_headings( WP_Post $post, array $preferences ): array {
         $callback = array( $this->frontend, 'inject_toc' );
@@ -561,13 +561,14 @@ class Structured_Data_Manager {
                 'url'         => $url,
                 'id'          => $heading['id'],
                 'faq_excerpt' => isset( $heading['faq_excerpt'] ) ? (string) $heading['faq_excerpt'] : '',
+                'faq_answer'  => isset( $heading['faq_answer'] ) ? (string) $heading['faq_answer'] : '',
             );
 
             $headings[] = $entry;
 
             if ( isset( $faq_map[ $heading['id'] ] ) ) {
                 $question = wp_strip_all_tags( $heading['title'] );
-                $answer   = isset( $entry['faq_excerpt'] ) ? (string) $entry['faq_excerpt'] : '';
+                $answer   = isset( $entry['faq_answer'] ) ? (string) $entry['faq_answer'] : '';
 
                 if ( '' !== $question && '' !== $answer ) {
                     $faq_entries[] = array(
@@ -595,7 +596,7 @@ class Structured_Data_Manager {
      * Build the ItemList node describing the TOC.
      *
      * @param WP_Post             $post         Post object.
-     * @param array<int,array{title:string,url:string,id?:string,faq_excerpt?:string}> $headings Heading data.
+     * @param array<int,array{title:string,url:string,id?:string,faq_excerpt?:string,faq_answer?:string}> $headings Heading data.
      * @param array<string,mixed> $preferences  Post-specific preferences.
      *
      * @return array<string,mixed>
