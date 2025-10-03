@@ -210,7 +210,7 @@ class Frontend {
             return $content;
         }
 
-        $content_with_inserted_toc = $this->insert_toc_after_first_heading( $content, $toc_markup );
+        $content_with_inserted_toc = $this->insert_toc_after_first_heading( $content, $toc_markup, $headings );
 
         if ( null !== $content_with_inserted_toc ) {
             return $content_with_inserted_toc;
@@ -734,69 +734,99 @@ class Frontend {
     /**
      * Insert the TOC markup immediately after the first heading (h2-h5).
      *
-     * @param string $content    Parsed post content.
-     * @param string $toc_markup TOC HTML markup.
+     * @param string                                             $content    Parsed post content.
+     * @param string                                             $toc_markup TOC HTML markup.
+     * @param array<int,array{title:string,id:string,level:int}> $headings   Parsed headings.
      *
      * @return string|null Updated content when a heading is found, otherwise null.
      */
-    protected function insert_toc_after_first_heading( string $content, string $toc_markup ): ?string {
+    protected function insert_toc_after_first_heading( string $content, string $toc_markup, array $headings ): ?string {
         if ( is_domdocument_missing() || ! class_exists( \DOMDocument::class ) ) {
             return $content;
         }
 
-        $dom       = new DOMDocument();
-        $previous  = libxml_use_internal_errors( true );
-        $loaded    = $dom->loadHTML( '<?xml encoding="utf-8"?>' . $content );
+        $dom      = new DOMDocument();
+        $previous = libxml_use_internal_errors( true );
+        $loaded   = $dom->loadHTML( '<?xml encoding="utf-8"?>' . $content );
         libxml_clear_errors();
         libxml_use_internal_errors( $previous );
 
-        if ( ! $loaded ) {
-            return null;
-        }
+        if ( $loaded ) {
+            $xpath = new DOMXPath( $dom );
+            $nodes = $xpath->query( '//h2 | //h3 | //h4 | //h5' );
 
-        $xpath   = new DOMXPath( $dom );
-        $headings = $xpath->query( '//h2 | //h3 | //h4 | //h5' );
+            if ( $nodes instanceof \DOMNodeList && $nodes->length > 0 ) {
+                $heading = $nodes->item( 0 );
 
-        if ( ! $headings instanceof \DOMNodeList || 0 === $headings->length ) {
-            return null;
-        }
+                if ( $heading ) {
+                    $fragment = $dom->createDocumentFragment();
 
-        $heading = $headings->item( 0 );
+                    if ( $fragment->appendXML( $toc_markup ) ) {
+                        $parent = $heading->parentNode;
 
-        if ( ! $heading ) {
-            return null;
-        }
+                        if ( $parent ) {
+                            if ( $heading->nextSibling ) {
+                                $parent->insertBefore( $fragment, $heading->nextSibling );
+                            } else {
+                                $parent->appendChild( $fragment );
+                            }
 
-        $fragment = $dom->createDocumentFragment();
+                            $body = $dom->getElementsByTagName( 'body' )->item( 0 );
 
-        if ( ! $fragment->appendXML( $toc_markup ) ) {
-            return null;
-        }
+                            if ( $body ) {
+                                $updated = '';
 
-        $parent = $heading->parentNode;
+                                foreach ( $body->childNodes as $child ) {
+                                    $updated .= $dom->saveHTML( $child );
+                                }
 
-        if ( ! $parent ) {
-            return null;
-        }
+                                return $updated;
+                            }
 
-        if ( $heading->nextSibling ) {
-            $parent->insertBefore( $fragment, $heading->nextSibling );
-        } else {
-            $parent->appendChild( $fragment );
-        }
+                            $html = $dom->saveHTML();
 
-        $body = $dom->getElementsByTagName( 'body' )->item( 0 );
-
-        if ( $body ) {
-            $updated = '';
-
-            foreach ( $body->childNodes as $child ) {
-                $updated .= $dom->saveHTML( $child );
+                            if ( is_string( $html ) && '' !== $html ) {
+                                return $html;
+                            }
+                        }
+                    }
+                }
             }
-
-            return $updated;
         }
 
-        return $dom->saveHTML();
+        return $this->insert_toc_using_heading_id( $content, $toc_markup, $headings );
+    }
+
+    /**
+     * Fallback TOC insertion using heading IDs when DOM operations fail.
+     *
+     * @param string                                             $content    Post content.
+     * @param string                                             $toc_markup TOC markup.
+     * @param array<int,array{title:string,id:string,level:int}> $headings   Parsed headings.
+     *
+     * @return string|null
+     */
+    protected function insert_toc_using_heading_id( string $content, string $toc_markup, array $headings ): ?string {
+        if ( empty( $headings ) ) {
+            return null;
+        }
+
+        $first_heading = $headings[0];
+
+        if ( empty( $first_heading['id'] ) ) {
+            return null;
+        }
+
+        $id      = preg_quote( $first_heading['id'], '#' );
+        $pattern = '#(<h[2-5][^>]*\bid=("|\')' . $id . '\2[^>]*>.*?</h[2-5]>)#is';
+
+        if ( ! preg_match( $pattern, $content, $matches, PREG_OFFSET_CAPTURE ) ) {
+            return null;
+        }
+
+        $match     = $matches[0];
+        $insert_at = $match[1] + strlen( $match[0] );
+
+        return substr( $content, 0, $insert_at ) . $toc_markup . substr( $content, $insert_at );
     }
 }
