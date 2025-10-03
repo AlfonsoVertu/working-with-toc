@@ -131,7 +131,18 @@ class Frontend {
 
         $preferences = $this->settings->get_post_preferences( $post );
 
-        $result            = Heading_Parser::parse( $content );
+        $faq_ids = isset( $preferences['faq_headings'] ) && is_array( $preferences['faq_headings'] )
+            ? $preferences['faq_headings']
+            : array();
+
+        $result            = Heading_Parser::parse(
+            $content,
+            array(
+                'faq_ids'          => $faq_ids,
+                'mark_faq'         => ! empty( $faq_ids ),
+                'mark_faq_answers' => true,
+            )
+        );
         $original_headings = $result['headings'];
         $headings          = $this->filter_headings( $original_headings, $preferences['excluded_headings'] );
         $content           = $result['content'];
@@ -269,7 +280,7 @@ class Frontend {
     /**
      * Filter headings according to the excluded list.
      *
-     * @param array<int,array{title:string,id:string,level:int}> $headings Headings list.
+     * @param array<int,array{title:string,id:string,level:int,faq_excerpt?:string}> $headings Headings list.
      * @param array<int,string>                                  $excluded IDs to exclude.
      *
      * @return array<int,array{title:string,id:string,level:int}>

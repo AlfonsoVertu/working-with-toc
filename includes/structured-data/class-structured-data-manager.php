@@ -37,7 +37,7 @@ class Structured_Data_Manager {
     /**
      * Cached schema for the current request.
      *
-     * @var array{item_list?:array<string,mixed>,fallback_graph?:array<string,mixed>}|null
+     * @var array{item_list?:array<string,mixed>,faq?:array<string,mixed>,fallback_graph?:array<string,mixed>}|null
      */
     protected $cached_schema = null;
 
@@ -123,6 +123,19 @@ class Structured_Data_Manager {
         }
 
         $graph[] = $item_list;
+
+        if ( ! empty( $schema['faq'] ) ) {
+            $faq    = $schema['faq'];
+            $faq_id = is_string( $faq['@id'] ?? null ) ? $faq['@id'] : '';
+
+            if ( $faq_id ) {
+                $parent_ids = $this->add_faq_reference_to_schema_nodes( $graph, $faq_id );
+                $faq        = $this->link_faq_to_parents( $faq, $parent_ids );
+            }
+
+            $graph[] = $faq;
+        }
+
         Logger::log( 'Merged TOC schema into Yoast graph for post ID ' . $post->ID );
 
         return $graph;
@@ -184,6 +197,18 @@ class Structured_Data_Manager {
         }
 
         $data['@graph'][] = $item_list;
+
+        if ( ! empty( $schema['faq'] ) ) {
+            $faq    = $schema['faq'];
+            $faq_id = is_string( $faq['@id'] ?? null ) ? $faq['@id'] : '';
+
+            if ( $faq_id ) {
+                $parent_ids = $this->add_faq_reference_to_schema_nodes( $data['@graph'], $faq_id );
+                $faq        = $this->link_faq_to_parents( $faq, $parent_ids );
+            }
+
+            $data['@graph'][] = $faq;
+        }
 
         Logger::log( 'Merged TOC schema into Rank Math graph for post ID ' . $post->ID );
 
@@ -263,6 +288,79 @@ class Structured_Data_Manager {
         }
 
         return $item_list;
+    }
+
+    /**
+     * Ensure schema nodes reference the FAQPage node and return their IDs.
+     *
+     * @param array<int|string,mixed> $nodes   Graph nodes to inspect.
+     * @param string                  $faq_id  FAQPage ID to reference.
+     * @param array<int,string>       $types   Node types to target.
+     *
+     * @return array<int,string>
+     */
+    protected function add_faq_reference_to_schema_nodes( array &$nodes, string $faq_id, array $types = array( 'WebPage', 'Article' ) ): array {
+        $parent_ids = array();
+
+        foreach ( $nodes as &$node ) {
+            if ( ! is_array( $node ) ) {
+                continue;
+            }
+
+            $node_types = $node['@type'] ?? array();
+            if ( ! is_array( $node_types ) ) {
+                $node_types = array( $node_types );
+            }
+
+            if ( empty( array_intersect( $types, $node_types ) ) ) {
+                continue;
+            }
+
+            $main_entity = $this->normalize_reference_list( $node['mainEntity'] ?? array() );
+            $main_entity = $this->add_reference_if_missing( $main_entity, $faq_id );
+
+            if ( ! empty( $main_entity ) ) {
+                $node['mainEntity'] = $main_entity;
+            }
+
+            if ( isset( $node['@id'] ) && is_string( $node['@id'] ) && '' !== $node['@id'] ) {
+                $parent_ids[] = $node['@id'];
+            }
+        }
+
+        unset( $node );
+
+        if ( empty( $parent_ids ) ) {
+            return array();
+        }
+
+        return array_values( array_unique( $parent_ids ) );
+    }
+
+    /**
+     * Link the FAQPage node to the detected parent nodes.
+     *
+     * @param array<string,mixed> $faq        FAQPage node.
+     * @param array<int,string>   $parent_ids Parent node IDs.
+     *
+     * @return array<string,mixed>
+     */
+    protected function link_faq_to_parents( array $faq, array $parent_ids ): array {
+        if ( empty( $parent_ids ) ) {
+            return $faq;
+        }
+
+        $is_part_of = $this->normalize_reference_list( $faq['isPartOf'] ?? array() );
+
+        foreach ( $parent_ids as $parent_id ) {
+            $is_part_of = $this->add_reference_if_missing( $is_part_of, $parent_id );
+        }
+
+        if ( ! empty( $is_part_of ) ) {
+            $faq['isPartOf'] = $is_part_of;
+        }
+
+        return $faq;
     }
 
     /**
@@ -356,8 +454,9 @@ class Structured_Data_Manager {
             return $this->cached_schema;
         }
 
-        $preferences = $this->settings->get_post_preferences( $post );
-        $headings    = $this->collect_headings( $post, $preferences );
+        $preferences  = $this->settings->get_post_preferences( $post );
+        $heading_data = $this->collect_headings( $post, $preferences );
+        $headings     = $heading_data['headings'];
 
         if ( empty( $headings ) ) {
             return $this->cached_schema;
@@ -373,7 +472,20 @@ class Structured_Data_Manager {
             'item_list' => $item_list,
         );
 
-        $fallback_graph = $this->build_fallback_graph( $post, $item_list, $this->resolve_schema_values( $post ) );
+        if ( ! empty( $heading_data['faq'] ) ) {
+            $faq_schema = $this->build_faq_schema( $post, $heading_data['faq'] );
+
+            if ( ! empty( $faq_schema ) ) {
+                $schema['faq'] = $faq_schema;
+            }
+        }
+
+        $fallback_graph = $this->build_fallback_graph(
+            $post,
+            $item_list,
+            $this->resolve_schema_values( $post ),
+            $schema['faq'] ?? null
+        );
 
         if ( ! empty( $fallback_graph ) ) {
             $schema['fallback_graph'] = $fallback_graph;
@@ -387,10 +499,10 @@ class Structured_Data_Manager {
     /**
      * Collect headings for the current post.
      *
-     * @param WP_Post                $post         Post object.
-     * @param array<string,mixed>    $preferences  Style preferences for the post.
+     * @param WP_Post             $post        Post object.
+     * @param array<string,mixed> $preferences Style preferences for the post.
      *
-     * @return array<int, array{title:string, url:string}>
+     * @return array{headings:array<int,array{title:string,url:string,id:string,faq_excerpt?:string}>,faq:array<int,array{question:string,answer:string,url:string,id:string}>}
      */
     protected function collect_headings( WP_Post $post, array $preferences ): array {
         $callback = array( $this->frontend, 'inject_toc' );
@@ -406,36 +518,84 @@ class Structured_Data_Manager {
             add_filter( 'the_content', $callback, (int) $priority );
         }
 
-        $parsed   = Heading_Parser::parse( $content );
-        $headings = array();
+        $permalink = get_permalink( $post );
+
+        if ( ! $permalink ) {
+            return array(
+                'headings' => array(),
+                'faq'      => array(),
+            );
+        }
+
+        $parsed = Heading_Parser::parse(
+            $content,
+            array(
+                'extract_faq' => true,
+            )
+        );
+
+        $headings    = array();
+        $faq_entries = array();
 
         $excluded = isset( $preferences['excluded_headings'] ) && is_array( $preferences['excluded_headings'] )
             ? array_fill_keys( $preferences['excluded_headings'], true )
             : array();
 
+        $faq_map = isset( $preferences['faq_headings'] ) && is_array( $preferences['faq_headings'] )
+            ? array_fill_keys( $preferences['faq_headings'], true )
+            : array();
+
         foreach ( $parsed['headings'] as $heading ) {
+            if ( ! isset( $heading['id'], $heading['title'] ) ) {
+                continue;
+            }
+
             if ( isset( $excluded[ $heading['id'] ] ) ) {
                 continue;
             }
 
-            $headings[] = array(
-                'title' => $heading['title'],
-                'url'   => get_permalink( $post ) . '#' . $heading['id'],
+            $url = $permalink . '#' . $heading['id'];
+
+            $entry = array(
+                'title'       => $heading['title'],
+                'url'         => $url,
+                'id'          => $heading['id'],
+                'faq_excerpt' => isset( $heading['faq_excerpt'] ) ? (string) $heading['faq_excerpt'] : '',
             );
+
+            $headings[] = $entry;
+
+            if ( isset( $faq_map[ $heading['id'] ] ) ) {
+                $question = wp_strip_all_tags( $heading['title'] );
+                $answer   = isset( $entry['faq_excerpt'] ) ? (string) $entry['faq_excerpt'] : '';
+
+                if ( '' !== $question && '' !== $answer ) {
+                    $faq_entries[] = array(
+                        'question' => $question,
+                        'answer'   => $answer,
+                        'url'      => $url,
+                        'id'       => $heading['id'],
+                    );
+                }
+            }
         }
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             Logger::log( 'Structured data headings raccolte: ' . count( $headings ) );
+            Logger::log( 'Structured data FAQ raccolte: ' . count( $faq_entries ) );
         }
 
-        return $headings;
+        return array(
+            'headings' => $headings,
+            'faq'      => $faq_entries,
+        );
     }
 
     /**
      * Build the ItemList node describing the TOC.
      *
      * @param WP_Post             $post         Post object.
-     * @param array<int,array{title:string,url:string}> $headings Heading data.
+     * @param array<int,array{title:string,url:string,id?:string,faq_excerpt?:string}> $headings Heading data.
      * @param array<string,mixed> $preferences  Post-specific preferences.
      *
      * @return array<string,mixed>
@@ -469,15 +629,90 @@ class Structured_Data_Manager {
     }
 
     /**
-     * Build the fallback structured data graph when no SEO plugin is active.
+     * Build the FAQPage node for FAQ structured data.
      *
-     * @param WP_Post             $post        Post object.
-     * @param array<string,mixed> $item_list   ItemList node.
-     * @param array<string,string> $values     Resolved schema values.
+     * @param WP_Post $post    Post object.
+     * @param array<int,array{question:string,answer:string,url:string,id:string}> $entries FAQ entries.
      *
      * @return array<string,mixed>
      */
-    protected function build_fallback_graph( WP_Post $post, array $item_list, array $values ): array {
+    protected function build_faq_schema( WP_Post $post, array $entries ): array {
+        if ( empty( $entries ) ) {
+            return array();
+        }
+
+        $permalink = get_permalink( $post );
+
+        if ( ! $permalink ) {
+            return array();
+        }
+
+        $faq_id      = $permalink . '#faq';
+        $webpage_id  = $permalink . '#webpage';
+        $main_entity = array();
+
+        foreach ( $entries as $index => $entry ) {
+            $question = isset( $entry['question'] ) ? trim( (string) $entry['question'] ) : '';
+            $answer   = isset( $entry['answer'] ) ? trim( (string) $entry['answer'] ) : '';
+
+            $question = wp_strip_all_tags( $question );
+            $answer   = wp_strip_all_tags( $answer );
+
+            if ( '' === $question || '' === $answer ) {
+                continue;
+            }
+
+            $question_id = ! empty( $entry['url'] )
+                ? $entry['url'] . '#question'
+                : $faq_id . '-question-' . ( $index + 1 );
+
+            $answer_id = ! empty( $entry['url'] )
+                ? $entry['url'] . '#answer'
+                : $faq_id . '-answer-' . ( $index + 1 );
+
+            $question_node = array(
+                '@type'          => 'Question',
+                '@id'            => $question_id,
+                'name'           => $question,
+                'acceptedAnswer' => array(
+                    '@type' => 'Answer',
+                    '@id'   => $answer_id,
+                    'text'  => $answer,
+                ),
+            );
+
+            if ( ! empty( $entry['url'] ) ) {
+                $question_node['url'] = $entry['url'];
+            }
+
+            $main_entity[] = $question_node;
+        }
+
+        if ( empty( $main_entity ) ) {
+            return array();
+        }
+
+        return array(
+            '@type'            => 'FAQPage',
+            '@id'              => $faq_id,
+            'mainEntity'       => $main_entity,
+            'mainEntityOfPage' => array( '@id' => $webpage_id ),
+            'isPartOf'         => array( array( '@id' => $webpage_id ) ),
+            'url'              => $permalink,
+        );
+    }
+
+    /**
+     * Build the fallback structured data graph when no SEO plugin is active.
+     *
+     * @param WP_Post             $post        Post object.
+     * @param array<string,mixed>  $item_list  ItemList node.
+     * @param array<string,string> $values     Resolved schema values.
+     * @param array<string,mixed>|null $faq    FAQPage node when available.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_fallback_graph( WP_Post $post, array $item_list, array $values, ?array $faq = null ): array {
         $permalink = get_permalink( $post );
 
         if ( ! $permalink ) {
@@ -532,6 +767,18 @@ class Structured_Data_Manager {
             'isPartOf'   => array( '@id' => $website_id ),
             'breadcrumb' => array( '@id' => $breadcrumb_id ),
         );
+
+        if ( ! empty( $faq ) ) {
+            $faq_id = is_string( $faq['@id'] ?? null ) ? $faq['@id'] : '';
+            if ( '' !== $faq_id ) {
+                $main_entity = $this->normalize_reference_list( $webpage['mainEntity'] ?? array() );
+                $main_entity = $this->add_reference_if_missing( $main_entity, $faq_id );
+
+                if ( ! empty( $main_entity ) ) {
+                    $webpage['mainEntity'] = $main_entity;
+                }
+            }
+        }
 
         if ( '' !== $values['description'] ) {
             $webpage['description'] = $values['description'];
@@ -600,6 +847,18 @@ class Structured_Data_Manager {
                 'hasPart'          => array( array( '@id' => $item_list_id ) ),
             );
 
+            if ( ! empty( $faq ) ) {
+                $faq_id = is_string( $faq['@id'] ?? null ) ? $faq['@id'] : '';
+                if ( '' !== $faq_id ) {
+                    $article_main_entity = $this->normalize_reference_list( $article['mainEntity'] ?? array() );
+                    $article_main_entity = $this->add_reference_if_missing( $article_main_entity, $faq_id );
+
+                    if ( ! empty( $article_main_entity ) ) {
+                        $article['mainEntity'] = $article_main_entity;
+                    }
+                }
+            }
+
             if ( '' !== $values['description'] ) {
                 $article['description'] = $values['description'];
             }
@@ -648,6 +907,10 @@ class Structured_Data_Manager {
 
         $item_list['@id'] = $item_list_id;
         $graph[]          = $item_list;
+
+        if ( ! empty( $faq ) ) {
+            $graph[] = $faq;
+        }
 
         return array(
             '@context' => 'https://schema.org',

@@ -146,8 +146,9 @@ class Meta_Box {
             'bottom' => __( 'Bottom', 'working-with-toc' ),
         );
 
-        $headings = $this->get_headings( $post );
-        $excluded = $this->sanitize_heading_ids( $meta['excluded_headings'] ?? array() );
+        $headings      = $this->get_headings( $post );
+        $excluded      = $this->sanitize_heading_ids( $meta['excluded_headings'] ?? array() );
+        $faq_selected  = $this->sanitize_heading_ids( $meta['faq_headings'] ?? array() );
         ?>
         <div class="wwt-toc-meta">
         <p class="wwt-toc-meta__description"><?php esc_html_e( "Customize the table of contents for this entry. The plugin's global settings apply when fields are left unchanged.", 'working-with-toc' ); ?></p>
@@ -223,14 +224,25 @@ class Meta_Box {
                 <?php if ( ! empty( $headings ) ) : ?>
                     <ul class="wwt-toc-meta__headings-list">
                         <?php foreach ( $headings as $heading ) :
-                            $indent  = max( 0, (int) $heading['level'] - 2 );
-                            $checked = ! in_array( $heading['id'], $excluded, true );
+                            $indent       = max( 0, (int) $heading['level'] - 2 );
+                            $checked      = ! in_array( $heading['id'], $excluded, true );
+                            $faq_checked  = in_array( $heading['id'], $faq_selected, true );
+                            $faq_excerpt  = isset( $heading['faq_excerpt'] ) && is_string( $heading['faq_excerpt'] ) ? trim( $heading['faq_excerpt'] ) : '';
                             ?>
                             <li class="wwt-toc-meta__headings-item wwt-level-<?php echo esc_attr( $indent ); ?>">
-                                <label>
-                                    <input type="checkbox" name="wwt_toc_meta[headings][]" value="<?php echo esc_attr( $heading['id'] ); ?>" <?php checked( $checked ); ?> />
-                                    <span><?php echo esc_html( $heading['title'] ); ?></span>
-                                </label>
+                                <div class="wwt-toc-meta__heading-controls">
+                                    <label class="wwt-toc-meta__heading-select">
+                                        <input type="checkbox" name="wwt_toc_meta[headings][]" value="<?php echo esc_attr( $heading['id'] ); ?>" <?php checked( $checked ); ?> />
+                                        <span class="wwt-toc-meta__heading-title"><?php echo esc_html( $heading['title'] ); ?></span>
+                                    </label>
+                                    <label class="wwt-toc-meta__faq-toggle">
+                                        <input type="checkbox" name="wwt_toc_meta[faq_headings][]" value="<?php echo esc_attr( $heading['id'] ); ?>" <?php checked( $faq_checked ); ?> />
+                                        <span><?php esc_html_e( 'FAQ', 'working-with-toc' ); ?></span>
+                                    </label>
+                                </div>
+                                <?php if ( '' !== $faq_excerpt ) : ?>
+                                    <p class="wwt-toc-meta__faq-preview"><?php echo esc_html( $faq_excerpt ); ?></p>
+                                <?php endif; ?>
                             </li>
                         <?php endforeach; ?>
                     </ul>
@@ -318,11 +330,15 @@ class Meta_Box {
             }
         }
 
-        $headings    = $this->get_headings( $post );
+        $headings        = $this->get_headings( $post );
         $all_heading_ids = array();
         foreach ( $headings as $heading ) {
-            $all_heading_ids[] = $heading['id'];
+            if ( isset( $heading['id'] ) ) {
+                $all_heading_ids[] = $heading['id'];
+            }
         }
+
+        $included = array();
 
         if ( ! empty( $all_heading_ids ) ) {
             $included = $this->sanitize_heading_selection( $input['headings'] ?? array(), $all_heading_ids );
@@ -330,6 +346,18 @@ class Meta_Box {
 
             if ( ! empty( $excluded ) ) {
                 $data['excluded_headings'] = $excluded;
+            }
+
+            $faq_selection = $this->sanitize_heading_selection( $input['faq_headings'] ?? array(), $all_heading_ids );
+
+            if ( ! empty( $included ) ) {
+                $faq_selection = array_values( array_intersect( $faq_selection, $included ) );
+            } else {
+                $faq_selection = array();
+            }
+
+            if ( ! empty( $faq_selection ) ) {
+                $data['faq_headings'] = $faq_selection;
             }
         }
 
@@ -375,14 +403,19 @@ class Meta_Box {
      *
      * @param WP_Post $post Post object.
      *
-     * @return array<int,array{title:string,id:string,level:int}>
+     * @return array<int,array{title:string,id:string,level:int,faq_excerpt?:string}>
      */
     protected function get_headings( WP_Post $post ): array {
         if ( '' === $post->post_content ) {
             return array();
         }
 
-        $parsed = Heading_Parser::parse( $post->post_content );
+        $parsed = Heading_Parser::parse(
+            $post->post_content,
+            array(
+                'extract_faq' => true,
+            )
+        );
 
         return $parsed['headings'];
     }
