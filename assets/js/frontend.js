@@ -8,10 +8,8 @@
         return value.replace(/([\s#:?&.,])/g, '\$1');
     }
 
-    var containers = document.querySelectorAll('[data-wwt-toc]');
-    if (!containers.length) {
-        return;
-    }
+    var initialized = false;
+    var highlightBound = false;
 
     function applyContainerColors(container) {
         var map = {
@@ -48,31 +46,6 @@
         }
     }
 
-    Array.prototype.forEach.call(containers, function (container) {
-        applyContainerColors(container);
-
-        var button = container.querySelector('.wwt-toc-toggle');
-        var panel = container.querySelector('.wwt-toc-content');
-
-        if (!button || !panel) {
-            return;
-        }
-
-        var expanded = container.dataset.expanded === 'true';
-        togglePanel(container, expanded);
-
-        button.addEventListener('click', function () {
-            var isExpanded = container.dataset.expanded === 'true';
-            togglePanel(container, !isExpanded);
-        });
-
-        button.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                togglePanel(container, false);
-            }
-        });
-    });
-
     function highlightActiveHeading() {
         var observer = new IntersectionObserver(function (entries) {
             entries.forEach(function (entry) {
@@ -105,7 +78,52 @@
         });
     }
 
-    if ('IntersectionObserver' in window) {
-        window.addEventListener('load', highlightActiveHeading);
+    function init() {
+        if (initialized) {
+            return;
+        }
+
+        var containers = document.querySelectorAll('[data-wwt-toc]');
+        if (!containers.length) {
+            return;
+        }
+
+        initialized = true;
+
+        Array.prototype.forEach.call(containers, function (container) {
+            applyContainerColors(container);
+
+            var button = container.querySelector('.wwt-toc-toggle');
+            var panel = container.querySelector('.wwt-toc-content');
+
+            if (!button || !panel) {
+                return;
+            }
+
+            var expanded = container.dataset.expanded === 'true';
+            togglePanel(container, expanded);
+
+            button.addEventListener('click', function () {
+                var isExpanded = container.dataset.expanded === 'true';
+                togglePanel(container, !isExpanded);
+            });
+
+            button.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    togglePanel(container, false);
+                }
+            });
+        });
+
+        if ('IntersectionObserver' in window && !highlightBound) {
+            highlightBound = true;
+            window.addEventListener('load', highlightActiveHeading);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
 })();
