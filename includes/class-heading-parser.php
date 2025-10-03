@@ -117,17 +117,16 @@ class Heading_Parser {
 
                 if ( $mark_faq && isset( $faq_ids[ $id ] ) ) {
                     self::add_class( $node, 'wwt-faq-question' );
-                    $node->setAttribute( 'data-wwt-faq', 'question' );
+                    $node->removeAttribute( 'data-wwt-faq' );
+                    $node->setAttribute( 'data-faq', 'question' );
 
                     if ( $mark_faq_answers && $faq_data['answer_node'] instanceof DOMElement ) {
                         $answer_node = $faq_data['answer_node'];
 
                         if ( 'body' !== strtolower( $answer_node->nodeName ) ) {
                             self::add_class( $answer_node, 'wwt-faq-answer' );
-
-                            if ( '' === $answer_node->getAttribute( 'data-wwt-faq' ) ) {
-                                $answer_node->setAttribute( 'data-wwt-faq', 'answer' );
-                            }
+                            $answer_node->removeAttribute( 'data-wwt-faq' );
+                            $answer_node->setAttribute( 'data-faq-answer', 'true' );
                         }
                     }
                 }
