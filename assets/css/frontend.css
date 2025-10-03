@@ -26,6 +26,16 @@
     transform: translate3d(var(--wwt-toc-translate-x), var(--wwt-toc-translate-y), 0);
 }
 
+.wwt-has-custom-title-colors .wwt-toc-header,
+.wwt-has-custom-title-colors .wwt-toc-summary {
+    background: var(--wwt-toc-title-bg) !important;
+    color: var(--wwt-toc-title-color) !important;
+}
+
+.wwt-has-custom-title-colors .wwt-toc-toggle {
+    color: var(--wwt-toc-title-color) !important;
+}
+
 .wwt-toc-container[data-render-mode="static"] {
     position: relative;
     left: auto;
