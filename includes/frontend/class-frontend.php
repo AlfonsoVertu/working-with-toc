@@ -448,9 +448,15 @@ class Frontend {
             $vertical = 'bottom';
         }
 
+        $classes = array( 'wwt-toc-container' );
+
+        if ( ! empty( $preferences['has_custom_title_colors'] ) ) {
+            $classes[] = 'wwt-has-custom-title-colors';
+        }
+
         $attributes = array(
             'id'               => $id,
-            'class'            => 'wwt-toc-container',
+            'class'            => implode( ' ', $classes ),
             'data-align-x'     => $horizontal,
             'data-align-y'     => $vertical,
             'data-render-mode' => $is_interactive ? 'interactive' : 'static',
@@ -537,7 +543,7 @@ class Frontend {
      * @param string              $element_id  Control element ID.
      */
     protected function build_custom_title_style( array $preferences, string $element_id ): string {
-        if ( empty( $preferences['has_custom_title_colors'] ) ) {
+        if ( $this->is_amp_request() || empty( $preferences['has_custom_title_colors'] ) ) {
             return '';
         }
 
