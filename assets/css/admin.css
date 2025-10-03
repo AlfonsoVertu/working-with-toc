@@ -551,6 +551,46 @@
     margin: 0;
 }
 
+.wwt-toc-meta__heading-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.wwt-toc-meta__heading-select {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 auto;
+}
+
+.wwt-toc-meta__heading-title {
+    flex: 1 1 auto;
+}
+
+.wwt-toc-meta__faq-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.wwt-toc-meta__faq-toggle input[type="checkbox"] {
+    margin: 0;
+}
+
+.wwt-toc-meta__faq-preview {
+    margin: 0.35rem 0 0 1.75rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
 .wwt-toc-meta__headings-item.wwt-level-0 {
     padding-left: 0;
 }

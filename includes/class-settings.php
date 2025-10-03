@@ -304,6 +304,7 @@ class Settings {
         }
 
         $preferences['excluded_headings'] = array();
+        $preferences['faq_headings']      = array();
         $preferences['has_custom_title_colors'] = false;
 
         return $preferences;
@@ -354,6 +355,7 @@ class Settings {
         }
 
         $preferences['excluded_headings'] = $this->sanitize_excluded_headings( $meta['excluded_headings'] ?? array() );
+        $preferences['faq_headings']      = $this->sanitize_excluded_headings( $meta['faq_headings'] ?? array() );
 
         return $preferences;
     }
