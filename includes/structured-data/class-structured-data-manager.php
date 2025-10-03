@@ -663,13 +663,20 @@ class Structured_Data_Manager {
                 continue;
             }
 
-            $question_id = ! empty( $entry['url'] )
-                ? $entry['url'] . '#question'
-                : $faq_id . '-question-' . ( $index + 1 );
+            $question_id = $faq_id . '-question-' . ( $index + 1 );
+            $answer_id   = $faq_id . '-answer-' . ( $index + 1 );
 
-            $answer_id = ! empty( $entry['url'] )
-                ? $entry['url'] . '#answer'
-                : $faq_id . '-answer-' . ( $index + 1 );
+            if ( ! empty( $entry['url'] ) ) {
+                $has_fragment = false !== strpos( $entry['url'], '#' );
+
+                $question_id = $has_fragment
+                    ? sprintf( '%s-question', $entry['url'] )
+                    : sprintf( '%s#question', $entry['url'] );
+
+                $answer_id = $has_fragment
+                    ? sprintf( '%s-answer', $entry['url'] )
+                    : sprintf( '%s#answer', $entry['url'] );
+            }
 
             $question_node = array(
                 '@type'          => 'Question',
