@@ -565,7 +565,7 @@ class Settings {
     }
 
     /**
-     * Sanitize URL based settings values.
+     * Sanitize URL based settings values for internal usage.
      *
      * @param mixed  $value    Submitted value.
      * @param string $fallback Default when invalid.
@@ -582,6 +582,16 @@ class Settings {
         }
 
         return $url;
+    }
+
+    /**
+     * Sanitize URL values that need to be reused externally.
+     *
+     * @param mixed  $value    Submitted value.
+     * @param string $fallback Default when invalid.
+     */
+    public function sanitize_url( $value, string $fallback ): string {
+        return $this->sanitize_url_value( $value, $fallback );
     }
 
     /**
