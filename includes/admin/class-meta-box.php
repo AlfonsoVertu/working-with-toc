@@ -403,7 +403,7 @@ class Meta_Box {
      *
      * @param WP_Post $post Post object.
      *
-     * @return array<int,array{title:string,id:string,level:int,faq_excerpt?:string}>
+     * @return array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>
      */
     protected function get_headings( WP_Post $post ): array {
         if ( '' === $post->post_content ) {

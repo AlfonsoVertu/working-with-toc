@@ -280,7 +280,7 @@ class Frontend {
     /**
      * Filter headings according to the excluded list.
      *
-     * @param array<int,array{title:string,id:string,level:int,faq_excerpt?:string}> $headings Headings list.
+     * @param array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}> $headings Headings list.
      * @param array<int,string>                                  $excluded IDs to exclude.
      *
      * @return array<int,array{title:string,id:string,level:int}>
