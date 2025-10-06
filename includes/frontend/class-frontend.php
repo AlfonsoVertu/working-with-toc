@@ -77,20 +77,24 @@ class Frontend {
             return;
         }
 
+        $is_amp_request = $post instanceof WP_Post && $this->is_amp_request();
+        $style_handle   = $is_amp_request ? 'wwt-toc-frontend-amp' : 'wwt-toc-frontend';
+        $style_path     = $is_amp_request ? 'assets/css/frontend-amp.css' : 'assets/css/frontend.css';
+
         wp_enqueue_style(
-            'wwt-toc-frontend',
-            WWT_TOC_PLUGIN_URL . 'assets/css/frontend.css',
+            $style_handle,
+            WWT_TOC_PLUGIN_URL . $style_path,
             array(),
             WWTOC_VERSION
         );
 
-        if ( $post instanceof WP_Post && $this->is_amp_request() ) {
+        if ( $is_amp_request ) {
             $preferences = $this->settings->get_post_preferences( $post );
             $class       = $this->get_amp_color_scheme_class( $preferences, (int) $post->ID );
             $css         = $this->build_amp_color_scheme_css();
 
             if ( null !== $class && '' !== $css ) {
-                wp_add_inline_style( 'wwt-toc-frontend', $css );
+                wp_add_inline_style( $style_handle, $css );
             }
 
             return;
