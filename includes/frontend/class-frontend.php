@@ -665,36 +665,56 @@ class Frontend {
             return '';
         }
 
-        $variable_map = array(
-            'background_color'       => '--wwt-toc-bg',
-            'text_color'             => '--wwt-toc-text',
-            'link_color'             => '--wwt-toc-link',
-            'title_background_color' => '--wwt-toc-title-bg',
-            'title_color'            => '--wwt-toc-title-color',
-        );
-
         $rules = array();
 
         foreach ( $this->amp_color_schemes as $class => $colors ) {
-            $declarations = array();
+            $sanitized_class = sanitize_html_class( $class );
 
-            foreach ( $variable_map as $preference_key => $variable_name ) {
-                if ( empty( $colors[ $preference_key ] ) ) {
-                    continue;
-                }
-
-                $declarations[] = sprintf( '%1$s:%2$s;', $variable_name, $colors[ $preference_key ] );
-            }
-
-            if ( empty( $declarations ) ) {
+            if ( '' === $sanitized_class ) {
                 continue;
             }
 
-            $rules[] = sprintf(
-                '.wwt-toc-container.%1$s{%2$s}',
-                sanitize_html_class( $class ),
-                implode( '', $declarations )
-            );
+            $container_declarations = array();
+            if ( ! empty( $colors['background_color'] ) ) {
+                $container_declarations[] = sprintf( 'background-color:%s;', $colors['background_color'] );
+            }
+
+            if ( ! empty( $colors['text_color'] ) ) {
+                $container_declarations[] = sprintf( 'color:%s;', $colors['text_color'] );
+            }
+
+            if ( ! empty( $container_declarations ) ) {
+                $rules[] = sprintf(
+                    '.wwt-toc-container.%1$s{%2$s}',
+                    $sanitized_class,
+                    implode( '', $container_declarations )
+                );
+            }
+
+            $title_declarations = array();
+            if ( ! empty( $colors['title_background_color'] ) ) {
+                $title_declarations[] = sprintf( 'background:%s;', $colors['title_background_color'] );
+            }
+
+            if ( ! empty( $colors['title_color'] ) ) {
+                $title_declarations[] = sprintf( 'color:%s;', $colors['title_color'] );
+            }
+
+            if ( ! empty( $title_declarations ) ) {
+                $rules[] = sprintf(
+                    '.wwt-toc-container.%1$s .wwt-toc-summary,.wwt-toc-container.%1$s .wwt-toc-summary-text{%2$s}',
+                    $sanitized_class,
+                    implode( '', $title_declarations )
+                );
+            }
+
+            if ( ! empty( $colors['link_color'] ) ) {
+                $rules[] = sprintf(
+                    '.wwt-toc-container.%1$s .wwt-toc-list a{color:%2$s;}',
+                    $sanitized_class,
+                    $colors['link_color']
+                );
+            }
         }
 
         return implode( '', $rules );
