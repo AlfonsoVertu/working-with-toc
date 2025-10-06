@@ -89,6 +89,8 @@ class Frontend {
         );
 
         if ( $is_amp_request ) {
+            add_filter( 'amp_post_template_data', array( $this, 'filter_amp_post_template_data' ) );
+
             $preferences = $this->settings->get_post_preferences( $post );
             $class       = $this->get_amp_color_scheme_class( $preferences, (int) $post->ID );
             $css         = $this->build_amp_color_scheme_css();
@@ -107,6 +109,44 @@ class Frontend {
             WWTOC_VERSION,
             true
         );
+    }
+
+    /**
+     * Fix common AMP stylesheet issues after tree shaking.
+     *
+     * @param array<string,mixed> $data Template data passed to the AMP renderer.
+     */
+    public function filter_amp_post_template_data( array $data ): array {
+        if ( empty( $data['amp_css_tree_shaking'] ) || ! is_array( $data['amp_css_tree_shaking'] ) ) {
+            return $data;
+        }
+
+        if ( empty( $data['amp_css_tree_shaking']['stylesheet'] ) || ! is_string( $data['amp_css_tree_shaking']['stylesheet'] ) ) {
+            return $data;
+        }
+
+        $data['amp_css_tree_shaking']['stylesheet'] = $this->repair_amp_stylesheet(
+            $data['amp_css_tree_shaking']['stylesheet']
+        );
+
+        return $data;
+    }
+
+    /**
+     * Repair invalid CSS fragments that break AMP validation.
+     */
+    protected function repair_amp_stylesheet( string $css ): string {
+        $fixed_css = preg_replace(
+            '/img:is\(\[sizes="auto" i\]\s*\{/',
+            'img:is([sizes="auto" i]){',
+            $css
+        );
+
+        if ( is_string( $fixed_css ) ) {
+            return $fixed_css;
+        }
+
+        return $css;
     }
 
     /**
