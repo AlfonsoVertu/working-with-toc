@@ -12,6 +12,7 @@ defined( 'ABSPATH' ) || exit;
 use Working_With_TOC\Admin\Admin_Page;
 use Working_With_TOC\Admin\Meta_Box;
 use Working_With_TOC\Frontend\Frontend;
+use Working_With_TOC\Frontend\Open_Graph_Manager;
 use Working_With_TOC\Heading_Parser;
 use Working_With_TOC\Structured_Data\Structured_Data_Manager;
 
@@ -49,6 +50,13 @@ class Plugin {
     protected $structured_data;
 
     /**
+     * Open Graph manager.
+     *
+     * @var Open_Graph_Manager
+     */
+    protected $open_graph;
+
+    /**
      * Post editor meta box handler.
      *
      * @var Meta_Box
@@ -63,6 +71,7 @@ class Plugin {
         $this->admin           = new Admin_Page( $this->settings );
         $this->frontend        = new Frontend( $this->settings );
         $this->structured_data = new Structured_Data_Manager( $this->settings, $this->frontend );
+        $this->open_graph      = new Open_Graph_Manager( $this->settings, $this->structured_data );
         $this->meta_box        = new Meta_Box( $this->settings );
 
         add_action( 'init', array( $this, 'load_textdomain' ) );
@@ -74,7 +83,9 @@ class Plugin {
         add_action( 'admin_enqueue_scripts', array( $this->meta_box, 'enqueue_assets' ) );
         add_action( 'wp_enqueue_scripts', array( $this->frontend, 'enqueue_assets' ) );
         add_filter( 'the_content', array( $this->frontend, 'inject_toc' ), 15 );
+        add_action( 'wp_head', array( $this->open_graph, 'start_buffer' ), 0 );
         add_action( 'wp_head', array( $this->structured_data, 'output_structured_data' ) );
+        add_action( 'wp_head', array( $this->open_graph, 'output_open_graph_tags' ), 9999 );
         add_action( 'add_meta_boxes', array( $this->meta_box, 'register' ) );
         add_action( 'save_post', array( $this->meta_box, 'save' ), 10, 2 );
 
