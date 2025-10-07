@@ -110,19 +110,25 @@ class Structured_Data_Manager {
         }
 
         $schema = $this->get_schema_for_post( $post );
-        if ( empty( $schema['item_list'] ) ) {
+        if ( empty( $schema['item_list'] ) && empty( $schema['fallback_graph'] ) ) {
             return $graph;
         }
 
-        $item_list    = $schema['item_list'];
-        $item_list_id = is_string( $item_list['@id'] ?? null ) ? $item_list['@id'] : '';
-
-        if ( $item_list_id ) {
-            $parent_ids = $this->add_item_list_reference_to_schema_nodes( $graph, $item_list_id );
-            $item_list  = $this->link_item_list_to_parents( $item_list, $parent_ids );
+        if ( empty( $graph ) || ! is_array( $graph ) ) {
+            $graph = array();
         }
 
-        $graph[] = $item_list;
+        if ( ! empty( $schema['item_list'] ) ) {
+            $item_list    = $schema['item_list'];
+            $item_list_id = is_string( $item_list['@id'] ?? null ) ? $item_list['@id'] : '';
+
+            if ( $item_list_id ) {
+                $parent_ids = $this->add_item_list_reference_to_schema_nodes( $graph, $item_list_id );
+                $item_list  = $this->link_item_list_to_parents( $item_list, $parent_ids );
+            }
+
+            $graph[] = $item_list;
+        }
 
         if ( ! empty( $schema['faq'] ) ) {
             $faq    = $schema['faq'];
@@ -135,6 +141,8 @@ class Structured_Data_Manager {
 
             $graph[] = $faq;
         }
+
+        $graph = $this->ensure_missing_schema_nodes( $graph, $schema, $post, 'Yoast' );
 
         Logger::log( 'Merged TOC schema into Yoast graph for post ID ' . $post->ID );
 
@@ -160,7 +168,7 @@ class Structured_Data_Manager {
         }
 
         $schema = $this->get_schema_for_post( $post );
-        if ( empty( $schema['item_list'] ) ) {
+        if ( empty( $schema['item_list'] ) && empty( $schema['fallback_graph'] ) ) {
             return is_array( $data ) ? $data : array();
         }
 
@@ -188,15 +196,17 @@ class Structured_Data_Manager {
             }
         }
 
-        $item_list    = $schema['item_list'];
-        $item_list_id = is_string( $item_list['@id'] ?? null ) ? $item_list['@id'] : '';
+        if ( ! empty( $schema['item_list'] ) ) {
+            $item_list    = $schema['item_list'];
+            $item_list_id = is_string( $item_list['@id'] ?? null ) ? $item_list['@id'] : '';
 
-        if ( $item_list_id ) {
-            $parent_ids = $this->add_item_list_reference_to_schema_nodes( $data['@graph'], $item_list_id );
-            $item_list  = $this->link_item_list_to_parents( $item_list, $parent_ids );
+            if ( $item_list_id ) {
+                $parent_ids = $this->add_item_list_reference_to_schema_nodes( $data['@graph'], $item_list_id );
+                $item_list  = $this->link_item_list_to_parents( $item_list, $parent_ids );
+            }
+
+            $data['@graph'][] = $item_list;
         }
-
-        $data['@graph'][] = $item_list;
 
         if ( ! empty( $schema['faq'] ) ) {
             $faq    = $schema['faq'];
@@ -209,6 +219,8 @@ class Structured_Data_Manager {
 
             $data['@graph'][] = $faq;
         }
+
+        $data['@graph'] = $this->ensure_missing_schema_nodes( $data['@graph'], $schema, $post, 'Rank Math' );
 
         Logger::log( 'Merged TOC schema into Rank Math graph for post ID ' . $post->ID );
 
@@ -418,6 +430,242 @@ class Structured_Data_Manager {
         $references[] = array( '@id' => $id );
 
         return $references;
+    }
+
+    /**
+     * Ensure missing schema nodes from the fallback graph are injected into the SEO graph.
+     *
+     * @param array<int|string,mixed>        $graph   Existing graph nodes.
+     * @param array<string,mixed>            $schema  Generated schema data.
+     * @param WP_Post                        $post    Current post object.
+     * @param string                         $source  Integration source label for logging.
+     *
+     * @return array<int|string,mixed>
+     */
+    protected function ensure_missing_schema_nodes( array $graph, array $schema, WP_Post $post, string $source ): array {
+        if ( empty( $schema['fallback_graph'] ) || ! is_array( $schema['fallback_graph'] ) ) {
+            return $graph;
+        }
+
+        $fallback_nodes = $schema['fallback_graph']['@graph'] ?? array();
+
+        if ( empty( $fallback_nodes ) || ! is_array( $fallback_nodes ) ) {
+            return $graph;
+        }
+
+        $index       = $this->build_schema_index( $graph );
+        $added_types = array();
+
+        foreach ( $fallback_nodes as $fallback_node ) {
+            if ( ! is_array( $fallback_node ) ) {
+                continue;
+            }
+
+            $node_types = $this->normalize_type_list( $fallback_node['@type'] ?? array() );
+            if ( empty( $node_types ) ) {
+                continue;
+            }
+
+            $manageable_types = $this->filter_manageable_schema_types( $node_types );
+            if ( empty( $manageable_types ) ) {
+                continue;
+            }
+
+            $node_id = isset( $fallback_node['@id'] ) && is_string( $fallback_node['@id'] ) ? $fallback_node['@id'] : '';
+
+            if ( '' !== $node_id && isset( $index['ids'][ $node_id ] ) ) {
+                continue;
+            }
+
+            $needs_injection = false;
+
+            foreach ( $manageable_types as $type ) {
+                if ( ! $this->has_schema_type( $index['types'], $type ) ) {
+                    $needs_injection = true;
+                    break;
+                }
+            }
+
+            if ( ! $needs_injection ) {
+                continue;
+            }
+
+            $graph[] = $fallback_node;
+
+            if ( '' !== $node_id ) {
+                $index['ids'][ $node_id ] = true;
+            }
+
+            foreach ( $node_types as $type ) {
+                $index['types'][ $type ] = true;
+            }
+
+            foreach ( $manageable_types as $type ) {
+                $added_types[ $type ] = true;
+            }
+        }
+
+        if ( ! empty( $added_types ) ) {
+            Logger::log(
+                sprintf(
+                    'Added fallback schema nodes (%s) to %s graph for post ID %d',
+                    implode( ', ', array_keys( $added_types ) ),
+                    $source,
+                    $post->ID
+                )
+            );
+        }
+
+        return $graph;
+    }
+
+    /**
+     * Build a lookup index for schema nodes.
+     *
+     * @param array<int|string,mixed> $graph Graph nodes to inspect.
+     *
+     * @return array{ids:array<string,bool>,types:array<string,bool>}
+     */
+    protected function build_schema_index( array $graph ): array {
+        $index = array(
+            'ids'   => array(),
+            'types' => array(),
+        );
+
+        foreach ( $graph as $node ) {
+            if ( ! is_array( $node ) ) {
+                continue;
+            }
+
+            $node_id = isset( $node['@id'] ) && is_string( $node['@id'] ) ? $node['@id'] : '';
+
+            if ( '' !== $node_id ) {
+                $index['ids'][ $node_id ] = true;
+            }
+
+            $types = $this->normalize_type_list( $node['@type'] ?? array() );
+
+            foreach ( $types as $type ) {
+                $index['types'][ $type ] = true;
+            }
+        }
+
+        return $index;
+    }
+
+    /**
+     * Normalize schema type values into a flat list of strings.
+     *
+     * @param mixed $types Raw type value.
+     *
+     * @return array<int,string>
+     */
+    protected function normalize_type_list( $types ): array {
+        if ( is_string( $types ) ) {
+            $types = trim( $types );
+
+            return '' !== $types ? array( $types ) : array();
+        }
+
+        if ( ! is_array( $types ) ) {
+            return array();
+        }
+
+        $normalized = array();
+
+        foreach ( $types as $type ) {
+            if ( ! is_string( $type ) ) {
+                continue;
+            }
+
+            $type = trim( $type );
+
+            if ( '' === $type ) {
+                continue;
+            }
+
+            $normalized[] = $type;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Determine which of the provided types are handled by the plugin.
+     *
+     * @param array<int,string> $types Schema types detected on a node.
+     *
+     * @return array<int,string> Base types managed by the plugin.
+     */
+    protected function filter_manageable_schema_types( array $types ): array {
+        $manageable = array();
+        $map        = $this->get_manageable_schema_type_map();
+
+        foreach ( $map as $base_type => $equivalents ) {
+            foreach ( $types as $type ) {
+                if ( in_array( $type, $equivalents, true ) ) {
+                    if ( ! in_array( $base_type, $manageable, true ) ) {
+                        $manageable[] = $base_type;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return $manageable;
+    }
+
+    /**
+     * Check whether a schema type already exists within the graph.
+     *
+     * @param array<string,bool> $existing_types Indexed schema types from the graph.
+     * @param string             $type           Base type to check.
+     */
+    protected function has_schema_type( array $existing_types, string $type ): bool {
+        $map         = $this->get_manageable_schema_type_map();
+        $equivalents = $map[ $type ] ?? array( $type );
+
+        foreach ( $equivalents as $candidate ) {
+            if ( isset( $existing_types[ $candidate ] ) ) {
+                return true;
+            }
+        }
+
+        if ( 'Article' === $type ) {
+            foreach ( $existing_types as $existing_type => $present ) {
+                if ( ! $present || ! is_string( $existing_type ) ) {
+                    continue;
+                }
+
+                $suffix_length = 7;
+
+                if ( strlen( $existing_type ) >= $suffix_length && 'Article' !== $existing_type && substr( $existing_type, -$suffix_length ) === 'Article' ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Map base schema types to the equivalent variants handled by the plugin.
+     *
+     * @return array<string,array<int,string>>
+     */
+    protected function get_manageable_schema_type_map(): array {
+        return array(
+            'Organization'   => array( 'Organization' ),
+            'WebSite'        => array( 'WebSite' ),
+            'WebPage'        => array( 'WebPage' ),
+            'Article'        => array( 'Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'ScholarlyArticle' ),
+            'Product'        => array( 'Product' ),
+            'BreadcrumbList' => array( 'BreadcrumbList' ),
+            'ItemList'       => array( 'ItemList' ),
+            'FAQPage'        => array( 'FAQPage' ),
+            'ImageObject'    => array( 'ImageObject' ),
+            'VideoObject'    => array( 'VideoObject' ),
+        );
     }
 
     /**
