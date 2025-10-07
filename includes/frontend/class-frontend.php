@@ -477,17 +477,17 @@ class Frontend {
      */
     protected function build_inline_styles( array $preferences ): string {
         $styles = array(
-            '--wwt-toc-bg'          => $preferences['background_color'] ?? '',
-            '--wwt-toc-text'        => $preferences['text_color'] ?? '',
-            '--wwt-toc-link'        => $preferences['link_color'] ?? '',
-            '--wwt-toc-title-bg'    => $preferences['title_background_color'] ?? '',
-            '--wwt-toc-title-color' => $preferences['title_color'] ?? '',
+            '--wwt-toc-bg'          => $this->sanitize_css_color_value( $preferences['background_color'] ?? '' ),
+            '--wwt-toc-text'        => $this->sanitize_css_color_value( $preferences['text_color'] ?? '' ),
+            '--wwt-toc-link'        => $this->sanitize_css_color_value( $preferences['link_color'] ?? '' ),
+            '--wwt-toc-title-bg'    => $this->sanitize_css_color_value( $preferences['title_background_color'] ?? '' ),
+            '--wwt-toc-title-color' => $this->sanitize_css_color_value( $preferences['title_color'] ?? '' ),
         );
 
         $parts = array();
 
         foreach ( $styles as $property => $value ) {
-            if ( is_string( $value ) && '' !== $value ) {
+            if ( '' !== $value ) {
                 $parts[] = $property . ':' . $value;
             }
         }
@@ -579,7 +579,13 @@ class Frontend {
                 continue;
             }
 
-            $attributes[ 'data-' . $data_key ] = $preferences[ $preference_key ];
+            $sanitized_value = $this->sanitize_css_color_value( $preferences[ $preference_key ] );
+
+            if ( '' === $sanitized_value ) {
+                continue;
+            }
+
+            $attributes[ 'data-' . $data_key ] = $sanitized_value;
         }
 
         return $this->stringify_attributes( $attributes );
@@ -691,10 +697,57 @@ class Frontend {
                 continue;
             }
 
-            $colors[ $key ] = $preferences[ $key ];
+            $sanitized_value = $this->sanitize_css_color_value( $preferences[ $key ] );
+
+            if ( '' === $sanitized_value ) {
+                continue;
+            }
+
+            $colors[ $key ] = $sanitized_value;
         }
 
         return $colors;
+    }
+
+    /**
+     * Sanitize color values before they are injected into CSS output.
+     *
+     * @param string|mixed $value Raw color value.
+     */
+    protected function sanitize_css_color_value( $value ): string {
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+
+        $value = trim( $value );
+
+        if ( '' === $value ) {
+            return '';
+        }
+
+        if ( false !== stripos( $value, 'url(' ) || preg_match( '/expression\s*\(/i', $value ) ) {
+            return '';
+        }
+
+        $value = preg_replace( '/\s*!important\b/i', '', $value );
+
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+
+        $value = preg_replace( '/[;{}]/', '', $value );
+
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+
+        $value = preg_replace( '/\s+/', ' ', $value );
+
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+
+        return trim( $value );
     }
 
     /**
