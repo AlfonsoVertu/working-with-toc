@@ -1379,6 +1379,17 @@ class Structured_Data_Manager {
     }
 
     /**
+     * Provide resolved schema values for reuse in other integrations.
+     *
+     * @param WP_Post $post Post object.
+     *
+     * @return array{headline:string,description:string,image:string,video:array<string,string>}
+     */
+    public function get_resolved_schema_values( WP_Post $post ): array {
+        return $this->resolve_schema_values( $post );
+    }
+
+    /**
      * Resolve primary video data for the post.
      *
      * @param WP_Post $post Post object.
