@@ -24,7 +24,11 @@ class Heading_Parser {
      * Parse content and return headings plus updated content.
      *
      * @param string $content HTML content.
-     * @param array  $options Parsing options.
+     * @param array  $options Parsing options. Supported options:
+     *                        - faq_ids (array<string>): Headings marked as FAQ questions.
+     *                        - mark_faq (bool): Whether to decorate FAQ headings.
+     *                        - mark_faq_answers (bool): Whether to decorate FAQ answers.
+     *                        - reserved_ids (array<string>): IDs that must not be reused.
      *
      * @return array{headings:array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>,content:string}
      */
@@ -66,6 +70,24 @@ class Heading_Parser {
         $nodes    = $xpath->query( '//h2 | //h3 | //h4 | //h5 | //h6' );
         $headings = array();
         $used_ids = array();
+
+        if ( isset( $options['reserved_ids'] ) && is_array( $options['reserved_ids'] ) ) {
+            foreach ( $options['reserved_ids'] as $reserved_id ) {
+                if ( ! is_string( $reserved_id ) ) {
+                    continue;
+                }
+
+                $reserved_id = trim( $reserved_id );
+
+                if ( '' === $reserved_id ) {
+                    continue;
+                }
+
+                if ( ! in_array( $reserved_id, $used_ids, true ) ) {
+                    $used_ids[] = $reserved_id;
+                }
+            }
+        }
 
         if ( $nodes ) {
             $length = $nodes->length;

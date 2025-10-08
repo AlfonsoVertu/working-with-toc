@@ -83,6 +83,13 @@ class Plugin {
         add_action( 'admin_enqueue_scripts', array( $this->meta_box, 'enqueue_assets' ) );
         add_action( 'wp_enqueue_scripts', array( $this->frontend, 'enqueue_assets' ) );
         add_filter( 'the_content', array( $this->frontend, 'inject_toc' ), 15 );
+        if ( post_type_exists( 'product' ) ) {
+            add_filter(
+                'woocommerce_short_description',
+                array( $this->frontend, 'filter_woocommerce_short_description' ),
+                Frontend::WOOCOMMERCE_SHORT_DESCRIPTION_PRIORITY
+            );
+        }
         add_action( 'wp_head', array( $this->open_graph, 'start_buffer' ), 0 );
         add_action( 'wp_head', array( $this->structured_data, 'output_structured_data' ) );
         add_action( 'wp_head', array( $this->open_graph, 'output_open_graph_tags' ), 9999 );

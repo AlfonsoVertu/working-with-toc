@@ -39,6 +39,18 @@ class Frontend {
     protected $amp_post_color_class = array();
 
     /**
+     * Parsed WooCommerce description segments keyed by post ID.
+     *
+     * @var array<int,array{
+     *     segments:array<string,array{
+     *         headings:array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>,
+     *         content:string,
+     *     }>,
+     * }>
+     */
+    protected $product_segments = array();
+
+    /**
      * Shortcode tag.
      */
     public const SHORTCODE_TAG = 'working_with_toc';
@@ -47,6 +59,11 @@ class Frontend {
      * Placeholder used to swap shortcode output with the final TOC markup.
      */
     private const SHORTCODE_PLACEHOLDER = '<!-- wwt-toc-shortcode -->';
+
+    /**
+     * Priority used when filtering the WooCommerce short description.
+     */
+    public const WOOCOMMERCE_SHORT_DESCRIPTION_PRIORITY = 15;
 
     /**
      * Settings.
@@ -164,6 +181,53 @@ class Frontend {
     }
 
     /**
+     * Ensure WooCommerce short descriptions expose heading anchors and are cached for TOC generation.
+     *
+     * @param string $description Short description markup.
+     */
+    public function filter_woocommerce_short_description( string $description ): string {
+        if ( '' === $description ) {
+            return $description;
+        }
+
+        if ( ! is_singular() ) {
+            return $description;
+        }
+
+        if ( is_feed() ) {
+            return $description;
+        }
+
+        if ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) {
+            return $description;
+        }
+
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return $description;
+        }
+
+        if ( is_domdocument_missing() ) {
+            return $description;
+        }
+
+        $post = get_post();
+
+        if ( ! $post instanceof WP_Post || 'product' !== $post->post_type ) {
+            return $description;
+        }
+
+        if ( ! $this->settings->is_enabled_for( $post->post_type ) ) {
+            return $description;
+        }
+
+        $preferences = $this->settings->get_post_preferences( $post );
+
+        $result = $this->parse_content_segment( $post, $description, $preferences, 'short' );
+
+        return $result['content'];
+    }
+
+    /**
      * Inject TOC markup into the content.
      *
      * @param string $content Post content.
@@ -203,24 +267,34 @@ class Frontend {
 
         $preferences = $this->settings->get_post_preferences( $post );
 
-        $faq_ids = isset( $preferences['faq_headings'] ) && is_array( $preferences['faq_headings'] )
-            ? $preferences['faq_headings']
-            : array();
+        if ( 'product' === $post->post_type ) {
+            $this->ensure_product_short_segment( $post, $preferences );
+        }
 
-        $result            = Heading_Parser::parse(
-            $content,
-            array(
-                'faq_ids'          => $faq_ids,
-                'mark_faq'         => ! empty( $faq_ids ),
-                'mark_faq_answers' => true,
-            )
-        );
-        $original_headings = $result['headings'];
-        $headings          = $this->filter_headings( $original_headings, $preferences['excluded_headings'] );
-        $content           = $result['content'];
+        $segment = 'product' === $post->post_type ? 'long' : 'content';
+
+        $result              = $this->parse_content_segment( $post, $content, $preferences, $segment );
+        $original_headings   = $result['headings'];
+        $headings            = $this->filter_headings( $original_headings, $preferences['excluded_headings'] );
+        $content             = $result['content'];
+        $short_headings      = array();
+        $short_source_exists = false;
+
+        if ( 'product' === $post->post_type ) {
+            $short_original = $this->get_product_segment_headings( $post, 'short' );
+
+            if ( ! empty( $short_original ) ) {
+                $short_source_exists = true;
+                $short_headings      = $this->filter_headings( $short_original, $preferences['excluded_headings'] );
+            }
+
+            if ( ! empty( $short_headings ) ) {
+                $headings = array_merge( $short_headings, $headings );
+            }
+        }
 
         if ( empty( $headings ) ) {
-            if ( empty( $original_headings ) ) {
+            if ( empty( $original_headings ) && ! $short_source_exists ) {
                 Logger::log( 'No headings found for TOC.' );
             } else {
                 Logger::log( 'All headings excluded from TOC for post ID ' . $post->ID );
@@ -467,6 +541,210 @@ class Frontend {
                     return ! isset( $map[ $heading['id'] ] );
                 }
             )
+        );
+    }
+
+    /**
+     * Build the parser options used for heading extraction.
+     *
+     * @param array<string,mixed> $preferences Post preferences.
+     * @param array<int,string>   $reserved_ids Reserved heading IDs.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_parser_options( array $preferences, array $reserved_ids = array() ): array {
+        $faq_ids = isset( $preferences['faq_headings'] ) && is_array( $preferences['faq_headings'] )
+            ? $preferences['faq_headings']
+            : array();
+
+        $options = array(
+            'faq_ids'          => $faq_ids,
+            'mark_faq'         => ! empty( $faq_ids ),
+            'mark_faq_answers' => true,
+        );
+
+        if ( ! empty( $reserved_ids ) ) {
+            $options['reserved_ids'] = $reserved_ids;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Parse content segments and retain their headings for later use.
+     *
+     * @param WP_Post               $post        Post instance.
+     * @param string                $content     HTML content to parse.
+     * @param array<string,mixed>   $preferences Post preferences.
+     * @param string                $segment     Segment identifier (short, long).
+     *
+     * @return array{headings:array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>,content:string}
+     */
+    protected function parse_content_segment( WP_Post $post, string $content, array $preferences, string $segment ): array {
+        $reserved_ids = array();
+
+        if ( 'product' === $post->post_type ) {
+            $reserved_ids = $this->get_reserved_heading_ids( (int) $post->ID, $segment );
+        }
+
+        $options = $this->build_parser_options( $preferences, $reserved_ids );
+
+        $result = Heading_Parser::parse( $content, $options );
+
+        if ( 'product' === $post->post_type ) {
+            $this->store_product_segment( (int) $post->ID, $segment, $result );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Retrieve heading IDs already assigned to other segments.
+     *
+     * @param int    $post_id         Post identifier.
+     * @param string $exclude_segment Segment name to exclude from the scan.
+     *
+     * @return array<int,string>
+     */
+    protected function get_reserved_heading_ids( int $post_id, string $exclude_segment = '' ): array {
+        if ( empty( $this->product_segments[ $post_id ]['segments'] ) ) {
+            return array();
+        }
+
+        $reserved = array();
+
+        foreach ( $this->product_segments[ $post_id ]['segments'] as $segment => $data ) {
+            if ( $exclude_segment === $segment ) {
+                continue;
+            }
+
+            if ( empty( $data['headings'] ) || ! is_array( $data['headings'] ) ) {
+                continue;
+            }
+
+            foreach ( $data['headings'] as $heading ) {
+                if ( empty( $heading['id'] ) || ! is_string( $heading['id'] ) ) {
+                    continue;
+                }
+
+                $reserved[ $heading['id'] ] = true;
+            }
+        }
+
+        return array_keys( $reserved );
+    }
+
+    /**
+     * Cache parsed content segments for later reuse.
+     *
+     * @param int   $post_id Post identifier.
+     * @param string $segment Segment name.
+     * @param array{headings:array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>,content:string} $parsed Parsed data.
+     */
+    protected function store_product_segment( int $post_id, string $segment, array $parsed ): void {
+        if ( ! isset( $this->product_segments[ $post_id ] ) ) {
+            $this->product_segments[ $post_id ] = array(
+                'segments' => array(),
+            );
+        }
+
+        $this->product_segments[ $post_id ]['segments'][ $segment ] = array(
+            'headings' => $parsed['headings'],
+            'content'  => $parsed['content'],
+        );
+    }
+
+    /**
+     * Retrieve previously parsed headings for a product segment.
+     *
+     * @param WP_Post $post    Post instance.
+     * @param string  $segment Segment name.
+     *
+     * @return array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>
+     */
+    protected function get_product_segment_headings( WP_Post $post, string $segment ): array {
+        $post_id = (int) $post->ID;
+
+        if ( empty( $this->product_segments[ $post_id ]['segments'][ $segment ]['headings'] ) ) {
+            return array();
+        }
+
+        $headings = $this->product_segments[ $post_id ]['segments'][ $segment ]['headings'];
+
+        return is_array( $headings ) ? $headings : array();
+    }
+
+    /**
+     * Ensure the WooCommerce short description is parsed before the main content.
+     *
+     * @param WP_Post             $post        Product instance.
+     * @param array<string,mixed> $preferences Post preferences.
+     */
+    protected function ensure_product_short_segment( WP_Post $post, array $preferences ): void {
+        $post_id = (int) $post->ID;
+
+        if ( isset( $this->product_segments[ $post_id ]['segments']['short'] ) ) {
+            return;
+        }
+
+        $short_description = $this->resolve_product_short_description( $post );
+
+        if ( '' === $short_description ) {
+            return;
+        }
+
+        $this->parse_content_segment( $post, $short_description, $preferences, 'short' );
+    }
+
+    /**
+     * Retrieve and format the product short description when it has not been parsed yet.
+     */
+    protected function resolve_product_short_description( WP_Post $post ): string {
+        $excerpt = get_post_field( 'post_excerpt', $post );
+
+        if ( ! is_string( $excerpt ) ) {
+            return '';
+        }
+
+        $excerpt = trim( $excerpt );
+
+        if ( '' === $excerpt ) {
+            return '';
+        }
+
+        $removed     = $this->temporarily_remove_short_description_filter();
+        $description = apply_filters( 'woocommerce_short_description', $excerpt );
+
+        if ( $removed ) {
+            $this->restore_short_description_filter();
+        }
+
+        if ( ! is_string( $description ) || '' === trim( $description ) ) {
+            $description = wpautop( $excerpt );
+        }
+
+        return $description;
+    }
+
+    /**
+     * Temporarily remove the plugin's WooCommerce short description filter.
+     */
+    protected function temporarily_remove_short_description_filter(): bool {
+        return remove_filter(
+            'woocommerce_short_description',
+            array( $this, 'filter_woocommerce_short_description' ),
+            self::WOOCOMMERCE_SHORT_DESCRIPTION_PRIORITY
+        );
+    }
+
+    /**
+     * Restore the plugin's WooCommerce short description filter after temporary removal.
+     */
+    protected function restore_short_description_filter(): void {
+        add_filter(
+            'woocommerce_short_description',
+            array( $this, 'filter_woocommerce_short_description' ),
+            self::WOOCOMMERCE_SHORT_DESCRIPTION_PRIORITY
         );
     }
 
