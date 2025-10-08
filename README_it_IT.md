@@ -24,6 +24,7 @@ La configurazione viene salvata attraverso le normali opzioni e i meta di WordPr
 - Generazione automatica degli anchor ID sui titoli `<h2>-<h6>` e sincronizzazione con gli URL della TOC.
 - Pannello di amministrazione personalizzato con interruttori per attivare TOC e dati strutturati per articoli, pagine e prodotti WooCommerce.
 - Output JSON-LD compatibile basato su `ItemList` per articoli, pagine e prodotti, integrato nel grafo schema di Yoast SEO e riconosciuto da Rank Math.
+- Metadati completi per i prodotti WooCommerce con identificativi GTIN/MPN, recensioni, costi di spedizione e fallback Open Graph.
 - Logging condizionato sul flag `WP_DEBUG` per agevolare il debug senza inquinare l'ambiente di produzione.
 
 ## Screenshot

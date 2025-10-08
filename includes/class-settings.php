@@ -120,6 +120,28 @@ class Settings {
                 'type'    => 'url',
                 'default' => '',
             );
+
+            if ( 'products' === $context ) {
+                $schema['products_schema_brand_attribute'] = array(
+                    'type'    => 'string',
+                    'default' => 'pa_brand',
+                );
+
+                $schema['products_schema_fallback_brand'] = array(
+                    'type'    => 'string',
+                    'default' => '',
+                );
+
+                $schema['products_schema_allow_id_as_sku'] = array(
+                    'type'    => 'boolean',
+                    'default' => false,
+                );
+
+                $schema['products_schema_condition'] = array(
+                    'type'    => 'string',
+                    'default' => 'https://schema.org/NewCondition',
+                );
+            }
         }
 
         return $schema;
@@ -383,6 +405,62 @@ class Settings {
             'headline'    => $headline,
             'description' => $description,
             'image'       => $image,
+        );
+    }
+
+    /**
+     * Retrieve settings related to WooCommerce product structured data.
+     *
+     * @return array{brand_attribute:string,fallback_brand:string,allow_id_as_sku:bool,condition_schema:string,condition_open_graph:string}
+     */
+    public function get_product_structured_data_settings(): array {
+        $settings = $this->get_settings();
+
+        $brand_attribute = isset( $settings['products_schema_brand_attribute'] )
+            ? sanitize_key( (string) $settings['products_schema_brand_attribute'] )
+            : 'pa_brand';
+
+        $fallback_brand = isset( $settings['products_schema_fallback_brand'] )
+            ? sanitize_text_field( (string) $settings['products_schema_fallback_brand'] )
+            : '';
+
+        $allow_id_as_sku = ! empty( $settings['products_schema_allow_id_as_sku'] );
+
+        $condition = isset( $settings['products_schema_condition'] )
+            ? $this->sanitize_url_value( $settings['products_schema_condition'], 'https://schema.org/NewCondition' )
+            : 'https://schema.org/NewCondition';
+
+        if ( '' === $condition ) {
+            $condition = 'https://schema.org/NewCondition';
+        }
+
+        $condition_slug = 'new';
+        $condition_lower = strtolower( $condition );
+
+        if ( false !== strpos( $condition_lower, 'refurb' ) ) {
+            $condition_slug = 'refurbished';
+        } elseif ( false !== strpos( $condition_lower, 'used' ) ) {
+            $condition_slug = 'used';
+        }
+
+        /**
+         * Filter the Open Graph condition slug derived from the configured condition URL.
+         *
+         * @param string $condition_slug Condition slug (new, used, refurbished).
+         * @param string $condition_url  Schema condition URL.
+         */
+        $condition_slug = apply_filters( 'working_with_toc_product_condition_slug', $condition_slug, $condition );
+
+        if ( ! is_string( $condition_slug ) || '' === $condition_slug ) {
+            $condition_slug = 'new';
+        }
+
+        return array(
+            'brand_attribute'      => $brand_attribute,
+            'fallback_brand'       => $fallback_brand,
+            'allow_id_as_sku'      => (bool) $allow_id_as_sku,
+            'condition_schema'     => $condition,
+            'condition_open_graph' => sanitize_key( $condition_slug ),
         );
     }
 

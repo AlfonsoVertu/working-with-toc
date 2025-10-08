@@ -49,6 +49,13 @@ class Structured_Data_Manager {
     protected $cached_post_id = 0;
 
     /**
+     * Additional schema nodes collected while building the fallback graph.
+     *
+     * @var array<int,array<string,mixed>>
+     */
+    protected $additional_graph_nodes = array();
+
+    /**
      * Constructor.
      *
      * @param Settings $settings Settings handler.
@@ -643,7 +650,7 @@ class Structured_Data_Manager {
             'WebSite'        => array( 'WebSite' ),
             'WebPage'        => array( 'WebPage', 'CollectionPage', 'ProfilePage', 'AboutPage', 'ContactPage', 'SearchResultsPage', 'ItemPage', 'CheckoutPage' ),
             'Article'        => array( 'Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'ScholarlyArticle', 'Report', 'SocialMediaPosting', 'LiveBlogPosting' ),
-            'Product'        => array( 'Product', 'ProductModel', 'ProductGroup', 'IndividualProduct', 'Vehicle' ),
+            'Product'        => array( 'Product', 'ProductModel', 'ProductGroup', 'IndividualProduct', 'Vehicle', 'ProductVariation' ),
             'BreadcrumbList' => array( 'BreadcrumbList' ),
             'ItemList'       => array( 'ItemList' ),
             'FAQPage'        => array( 'FAQPage', 'QAPage' ),
@@ -762,6 +769,7 @@ class Structured_Data_Manager {
 
         $this->cached_post_id = $post->ID;
         $this->cached_schema  = array();
+        $this->additional_graph_nodes = array();
 
         if ( ! $this->settings->is_structured_data_enabled_for( $post->post_type ) ) {
             return $this->cached_schema;
@@ -1286,6 +1294,10 @@ class Structured_Data_Manager {
             $graph[] = $faq;
         }
 
+        if ( ! empty( $this->additional_graph_nodes ) ) {
+            $graph = array_merge( $graph, $this->additional_graph_nodes );
+        }
+
         return array(
             '@context' => 'https://schema.org',
             '@graph'   => $graph,
@@ -1330,26 +1342,26 @@ class Structured_Data_Manager {
             $product = wc_get_product( $post->ID );
 
             if ( $product instanceof \WC_Product ) {
-                $sku = $product->get_sku();
-                if ( $sku ) {
+                $schema_settings = $this->settings->get_product_structured_data_settings();
+
+                $sku = $this->resolve_product_sku( $product, $schema_settings );
+                if ( '' !== $sku ) {
                     $product_node['sku'] = $sku;
                 }
 
-                /**
-                 * Filter the attribute used to determine the product brand for structured data output.
-                 *
-                 * @param string      $attribute_slug Default attribute slug.
-                 * @param \WC_Product $product        Current product instance.
-                 */
-                $brand_attribute = apply_filters( 'working_with_toc_structured_data_brand_attribute', 'pa_brand', $product );
-                if ( is_string( $brand_attribute ) && '' !== trim( $brand_attribute ) ) {
-                    $brand = $product->get_attribute( $brand_attribute );
-                    if ( is_string( $brand ) && '' !== trim( $brand ) ) {
-                        $product_node['brand'] = array(
-                            '@type' => 'Brand',
-                            'name'  => wp_strip_all_tags( $brand ),
-                        );
-                    }
+                $mpn = $this->resolve_product_mpn( $product, $schema_settings, $sku );
+                if ( '' !== $mpn ) {
+                    $product_node['mpn'] = $mpn;
+                }
+
+                $gtin_values = $this->resolve_product_gtin_values( $product );
+                foreach ( $gtin_values as $gtin_key => $gtin_value ) {
+                    $product_node[ $gtin_key ] = $gtin_value;
+                }
+
+                $brand_data = $this->resolve_product_brand_data( $product, $schema_settings );
+                if ( ! empty( $brand_data['node'] ) ) {
+                    $product_node['brand'] = $brand_data['node'];
                 }
 
                 if ( empty( $product_node['description'] ) ) {
@@ -1359,43 +1371,953 @@ class Structured_Data_Manager {
                     }
                 }
 
-                $price = $product->get_price();
-                if ( '' !== $price ) {
-                    $price_value = (string) $price;
-                    if ( is_numeric( $price ) ) {
-                        $decimals    = function_exists( 'wc_get_price_decimals' ) ? wc_get_price_decimals() : 2;
-                        $price_value = number_format( (float) $price, $decimals, '.', '' );
-                    }
+                $similar_products = $this->resolve_similar_products( $product );
+                if ( ! empty( $similar_products ) ) {
+                    $product_node['isSimilarTo'] = $similar_products;
+                }
 
-                    $currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : get_option( 'woocommerce_currency', 'USD' );
-                    if ( '' === $currency ) {
-                        $currency = 'USD';
-                    }
+                $aggregate_rating = $this->build_product_aggregate_rating( $product );
+                if ( ! empty( $aggregate_rating ) ) {
+                    $product_node['aggregateRating'] = $aggregate_rating;
+                }
 
-                    $offer = array(
-                        '@type'         => 'Offer',
-                        'price'         => $price_value,
-                        'priceCurrency' => $currency,
-                        'url'           => $permalink,
-                    );
+                $reviews = $this->build_product_reviews( $product );
+                if ( ! empty( $reviews ) ) {
+                    $product_node['review'] = $reviews;
+                }
 
-                    $availability_map = array(
-                        'instock'     => 'https://schema.org/InStock',
-                        'outofstock'  => 'https://schema.org/OutOfStock',
-                        'onbackorder' => 'https://schema.org/BackOrder',
-                    );
+                $currency         = $this->get_product_currency();
+                $shipping_details = $this->build_shipping_details( $product, $currency );
+                $offers           = $this->build_product_offers( $product, $permalink, $schema_settings, $shipping_details );
 
-                    $stock_status = $product->get_stock_status();
-                    if ( isset( $availability_map[ $stock_status ] ) ) {
-                        $offer['availability'] = $availability_map[ $stock_status ];
-                    }
+                if ( ! empty( $offers ) ) {
+                    $product_node['offers'] = $offers;
+                }
 
-                    $product_node['offers'] = $offer;
+                $variants = $this->build_product_variations( $product, $permalink, $product_id, $schema_settings, $shipping_details );
+
+                if ( ! empty( $variants['references'] ) ) {
+                    $product_node['hasVariant'] = $variants['references'];
+                }
+
+                if ( ! empty( $variants['nodes'] ) ) {
+                    $this->additional_graph_nodes = array_merge( $this->additional_graph_nodes, $variants['nodes'] );
                 }
             }
         }
 
         return $product_node;
+    }
+
+    /**
+     * Determine the SKU to expose for a product.
+     *
+     * @param \WC_Product $product         Product instance.
+     * @param array        $schema_settings Schema configuration.
+     */
+    protected function resolve_product_sku( \WC_Product $product, array $schema_settings ): string {
+        $sku = $product->get_sku();
+
+        if ( '' === $sku && ! empty( $schema_settings['allow_id_as_sku'] ) ) {
+            $sku = (string) $product->get_id();
+        }
+
+        /**
+         * Filter the SKU value used for structured data.
+         *
+         * @param string      $sku             Resolved SKU value.
+         * @param \WC_Product $product         Product instance.
+         * @param array       $schema_settings Schema configuration.
+         */
+        $sku = apply_filters( 'working_with_toc_structured_data_sku', $sku, $product, $schema_settings );
+
+        if ( ! is_string( $sku ) ) {
+            return '';
+        }
+
+        $sku = sanitize_text_field( $sku );
+
+        return '' !== $sku ? $sku : '';
+    }
+
+    /**
+     * Resolve the MPN value for a product.
+     *
+     * @param \WC_Product $product         Product instance.
+     * @param array        $schema_settings Schema configuration.
+     * @param string       $sku             Previously resolved SKU.
+     */
+    protected function resolve_product_mpn( \WC_Product $product, array $schema_settings, string $sku ): string {
+        $mpn = $product->get_meta( '_mpn', true );
+
+        if ( '' === $mpn ) {
+            $mpn = $product->get_meta( 'mpn', true );
+        }
+
+        if ( '' === $mpn ) {
+            $mpn = $sku;
+        }
+
+        /**
+         * Filter the MPN value exposed for structured data.
+         *
+         * @param string      $mpn             Resolved MPN value.
+         * @param \WC_Product $product         Product instance.
+         * @param array       $schema_settings Schema configuration.
+         */
+        $mpn = apply_filters( 'working_with_toc_structured_data_mpn', $mpn, $product, $schema_settings );
+
+        if ( ! is_string( $mpn ) ) {
+            return '';
+        }
+
+        $mpn = sanitize_text_field( $mpn );
+
+        return '' !== $mpn ? $mpn : '';
+    }
+
+    /**
+     * Retrieve GTIN values associated with a product.
+     *
+     * @param \WC_Product $product Product instance.
+     *
+     * @return array<string,string>
+     */
+    protected function resolve_product_gtin_values( \WC_Product $product ): array {
+        $meta_map = array(
+            'gtin8'  => '_gtin8',
+            'gtin12' => '_gtin12',
+            'gtin13' => '_gtin13',
+            'gtin14' => '_gtin14',
+            'gtin'   => '_gtin',
+        );
+
+        /**
+         * Filter the meta keys inspected to resolve GTIN values.
+         *
+         * @param array<string,string> $meta_map Default meta key map.
+         * @param \WC_Product          $product Product instance.
+         */
+        $meta_map = apply_filters( 'working_with_toc_structured_data_gtin_meta_map', $meta_map, $product );
+
+        if ( ! is_array( $meta_map ) ) {
+            return array();
+        }
+
+        $gtins = array();
+
+        foreach ( $meta_map as $property => $meta_key ) {
+            if ( ! is_string( $property ) || '' === $property ) {
+                continue;
+            }
+
+            $meta_value = '';
+
+            if ( is_string( $meta_key ) && '' !== $meta_key ) {
+                $meta_value = $product->get_meta( $meta_key, true );
+            }
+
+            if ( '' === $meta_value && taxonomy_exists( $meta_key ) ) {
+                $meta_value = $product->get_attribute( $meta_key );
+            }
+
+            if ( ! is_string( $meta_value ) || '' === $meta_value ) {
+                continue;
+            }
+
+            $sanitized = $this->sanitize_gtin_value( $meta_value );
+
+            if ( '' === $sanitized ) {
+                continue;
+            }
+
+            $gtins[ $property ] = $sanitized;
+        }
+
+        /**
+         * Allow filtering the resolved GTIN values before they are used.
+         *
+         * @param array<string,string> $gtins   Resolved GTIN data.
+         * @param \WC_Product          $product Product instance.
+         */
+        $gtins = apply_filters( 'working_with_toc_structured_data_gtin_values', $gtins, $product );
+
+        return is_array( $gtins ) ? $gtins : array();
+    }
+
+    /**
+     * Resolve brand data for a product, providing both the schema node and name.
+     *
+     * @param \WC_Product $product         Product instance.
+     * @param array        $schema_settings Schema configuration.
+     *
+     * @return array{node?:array<string,string>,name:string}
+     */
+    protected function resolve_product_brand_data( \WC_Product $product, array $schema_settings ): array {
+        $brand_name = '';
+
+        $brand_attribute = isset( $schema_settings['brand_attribute'] ) ? (string) $schema_settings['brand_attribute'] : '';
+
+        /**
+         * Filter the attribute slug used to detect the product brand.
+         *
+         * @param string      $brand_attribute Attribute slug.
+         * @param \WC_Product $product         Product instance.
+         * @param array       $schema_settings Schema configuration.
+         */
+        $brand_attribute = apply_filters( 'working_with_toc_structured_data_brand_attribute', $brand_attribute, $product, $schema_settings );
+
+        if ( '' !== $brand_attribute ) {
+            $brand_value = $product->get_attribute( $brand_attribute );
+
+            if ( is_string( $brand_value ) && '' !== trim( $brand_value ) ) {
+                $brand_name = wp_strip_all_tags( $brand_value );
+            }
+        }
+
+        if ( '' === $brand_name && ! empty( $schema_settings['fallback_brand'] ) ) {
+            $brand_name = (string) $schema_settings['fallback_brand'];
+        }
+
+        /**
+         * Filter the brand name detected for structured data.
+         *
+         * @param string      $brand_name      Resolved brand label.
+         * @param \WC_Product $product         Product instance.
+         * @param array       $schema_settings Schema configuration.
+         */
+        $brand_name = apply_filters( 'working_with_toc_structured_data_brand_name', $brand_name, $product, $schema_settings );
+
+        if ( ! is_string( $brand_name ) ) {
+            $brand_name = '';
+        }
+
+        $brand_name = trim( wp_strip_all_tags( $brand_name ) );
+
+        $brand_node = array();
+
+        if ( '' !== $brand_name ) {
+            $brand_node = array(
+                '@type' => 'Brand',
+                'name'  => $brand_name,
+            );
+        }
+
+        return array(
+            'node' => $brand_node,
+            'name' => $brand_name,
+        );
+    }
+
+    /**
+     * Resolve the list of similar products for a given product.
+     *
+     * @param \WC_Product $product Product instance.
+     *
+     * @return array<int,array<string,string>>
+     */
+    protected function resolve_similar_products( \WC_Product $product ): array {
+        $related_ids = array();
+
+        if ( function_exists( 'wc_get_related_products' ) ) {
+            $related_ids = wc_get_related_products( $product->get_id(), 8 );
+        }
+
+        if ( method_exists( $product, 'get_cross_sell_ids' ) ) {
+            $related_ids = array_merge( $related_ids, $product->get_cross_sell_ids() );
+        }
+
+        if ( method_exists( $product, 'get_upsell_ids' ) ) {
+            $related_ids = array_merge( $related_ids, $product->get_upsell_ids() );
+        }
+
+        $related_ids = array_values( array_unique( array_filter( array_map( 'absint', $related_ids ) ) ) );
+
+        $similar = array();
+
+        foreach ( array_slice( $related_ids, 0, 8 ) as $related_id ) {
+            $permalink = get_permalink( $related_id );
+
+            if ( ! $permalink ) {
+                continue;
+            }
+
+            $similar[] = array(
+                '@type' => 'Product',
+                '@id'   => $permalink . '#product',
+            );
+        }
+
+        /**
+         * Filter the list of similar products exposed in structured data.
+         *
+         * @param array<int,array<string,string>> $similar Similar product references.
+         * @param \WC_Product                     $product Product instance.
+         */
+        $similar = apply_filters( 'working_with_toc_structured_data_similar_products', $similar, $product );
+
+        return is_array( $similar ) ? $similar : array();
+    }
+
+    /**
+     * Build the aggregate rating node for a product when review data is available.
+     *
+     * @param \WC_Product $product Product instance.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_product_aggregate_rating( \WC_Product $product ): array {
+        $rating_count = (int) $product->get_rating_count();
+        $average      = (float) $product->get_average_rating();
+        $review_count = (int) $product->get_review_count();
+
+        if ( $rating_count <= 0 || $average <= 0 ) {
+            return array();
+        }
+
+        if ( $review_count <= 0 ) {
+            $review_count = $rating_count;
+        }
+
+        $aggregate = array(
+            '@type'       => 'AggregateRating',
+            'ratingValue' => number_format( $average, 2, '.', '' ),
+            'ratingCount' => $rating_count,
+            'reviewCount' => $review_count,
+        );
+
+        /**
+         * Filter the aggregate rating node for structured data.
+         *
+         * @param array<string,mixed> $aggregate Aggregate rating data.
+         * @param \WC_Product         $product   Product instance.
+         */
+        $aggregate = apply_filters( 'working_with_toc_structured_data_aggregate_rating', $aggregate, $product );
+
+        return is_array( $aggregate ) ? $aggregate : array();
+    }
+
+    /**
+     * Build review nodes using approved WooCommerce product reviews.
+     *
+     * @param \WC_Product $product Product instance.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    protected function build_product_reviews( \WC_Product $product ): array {
+        $args = array(
+            'post_id' => $product->get_id(),
+            'status'  => 'approve',
+            'type'    => 'review',
+            'number'  => apply_filters( 'working_with_toc_structured_data_review_limit', 20, $product ),
+        );
+
+        $comments = get_comments( $args );
+
+        if ( empty( $comments ) ) {
+            return array();
+        }
+
+        $reviews = array();
+
+        foreach ( $comments as $comment ) {
+            if ( ! $comment instanceof \WP_Comment ) {
+                continue;
+            }
+
+            $rating = get_comment_meta( $comment->comment_ID, 'rating', true );
+
+            if ( '' === $rating ) {
+                continue;
+            }
+
+            $rating_value = is_numeric( $rating ) ? number_format( (float) $rating, 1, '.', '' ) : '';
+
+            if ( '' === $rating_value ) {
+                continue;
+            }
+
+            $author_name = $comment->comment_author ? wp_strip_all_tags( $comment->comment_author ) : '';
+
+            $date_published = mysql_to_rfc3339( $comment->comment_date_gmt );
+            if ( ! $date_published ) {
+                $timestamp = strtotime( $comment->comment_date_gmt );
+                if ( false !== $timestamp ) {
+                    $date_published = gmdate( DATE_W3C, $timestamp );
+                } else {
+                    $date_published = '';
+                }
+            }
+
+            $review_body = wp_strip_all_tags( $comment->comment_content );
+
+            if ( '' === $date_published ) {
+                continue;
+            }
+
+            $review = array(
+                '@type'         => 'Review',
+                'datePublished' => $date_published,
+                'reviewBody'    => $review_body,
+                'reviewRating'  => array(
+                    '@type'       => 'Rating',
+                    'ratingValue' => $rating_value,
+                    'bestRating'  => '5',
+                    'worstRating' => '1',
+                ),
+            );
+
+            if ( '' !== $author_name ) {
+                $review['author'] = array(
+                    '@type' => 'Person',
+                    'name'  => $author_name,
+                );
+            }
+
+            if ( '' !== $review_body ) {
+                $reviews[] = $review;
+            }
+        }
+
+        /**
+         * Filter the list of review nodes included in structured data.
+         *
+         * @param array<int,array<string,mixed>> $reviews Review nodes.
+         * @param \WC_Product                    $product Product instance.
+         */
+        $reviews = apply_filters( 'working_with_toc_structured_data_reviews', $reviews, $product );
+
+        return is_array( $reviews ) ? $reviews : array();
+    }
+
+    /**
+     * Retrieve the store currency used for structured data output.
+     */
+    protected function get_product_currency(): string {
+        $currency = '';
+
+        if ( function_exists( 'get_woocommerce_currency' ) ) {
+            $currency = get_woocommerce_currency();
+        }
+
+        if ( '' === $currency ) {
+            $currency = (string) get_option( 'woocommerce_currency', 'USD' );
+        }
+
+        if ( '' === $currency ) {
+            $currency = 'USD';
+        }
+
+        /**
+         * Filter the currency code used for structured data.
+         *
+         * @param string $currency Currency ISO code.
+         */
+        $currency = apply_filters( 'working_with_toc_structured_data_currency', $currency );
+
+        if ( ! is_string( $currency ) ) {
+            $currency = 'USD';
+        }
+
+        return strtoupper( sanitize_text_field( $currency ) );
+    }
+
+    /**
+     * Determine the number of decimal places to use for price formatting.
+     */
+    protected function get_price_decimals(): int {
+        $decimals = function_exists( 'wc_get_price_decimals' ) ? wc_get_price_decimals() : 2;
+
+        if ( ! is_numeric( $decimals ) ) {
+            $decimals = 2;
+        }
+
+        return max( 0, (int) $decimals );
+    }
+
+    /**
+     * Build offer data for the current product.
+     *
+     * @param \WC_Product              $product          Product instance.
+     * @param string                    $permalink        Product permalink.
+     * @param array<string,mixed>       $schema_settings  Schema configuration.
+     * @param array<int,array<string,mixed>> $shipping_details Shipping data.
+     *
+     * @return array<string,mixed>
+     */
+    protected function build_product_offers( \WC_Product $product, string $permalink, array $schema_settings, array $shipping_details ): array {
+        $currency             = $this->get_product_currency();
+        $availability_map     = $this->get_schema_availability_map();
+        $condition            = $this->resolve_product_condition_schema( $schema_settings );
+        $sanitized_permalink  = $this->settings->sanitize_url( $permalink, '' );
+
+        if ( $product->is_type( 'variable' ) ) {
+            $prices = method_exists( $product, 'get_variation_prices' ) ? $product->get_variation_prices( true ) : array();
+            $price_list = isset( $prices['price'] ) && is_array( $prices['price'] ) ? $prices['price'] : array();
+
+            $numeric_prices = array();
+
+            foreach ( $price_list as $value ) {
+                if ( '' === $value ) {
+                    continue;
+                }
+
+                $numeric_prices[] = (float) $value;
+            }
+
+            if ( empty( $numeric_prices ) ) {
+                return array();
+            }
+
+            $offer = array(
+                '@type'         => 'AggregateOffer',
+                'priceCurrency' => $currency,
+                'offerCount'    => count( $numeric_prices ),
+                'lowPrice'      => $this->format_price_value( min( $numeric_prices ) ),
+                'highPrice'     => $this->format_price_value( max( $numeric_prices ) ),
+            );
+
+            if ( '' !== $sanitized_permalink ) {
+                $offer['url'] = $sanitized_permalink;
+            }
+
+            $stock_status = $product->get_stock_status();
+            if ( isset( $availability_map[ $stock_status ] ) ) {
+                $offer['availability'] = $availability_map[ $stock_status ];
+            }
+
+            if ( '' !== $condition ) {
+                $offer['itemCondition'] = $condition;
+            }
+
+            if ( ! empty( $shipping_details ) ) {
+                $offer['shippingDetails'] = $shipping_details;
+            }
+
+            /**
+             * Filter the aggregate offer node for variable products.
+             *
+             * @param array<string,mixed> $offer           Aggregate offer data.
+             * @param \WC_Product         $product         Product instance.
+             * @param array<string,mixed> $schema_settings Schema configuration.
+             */
+            $offer = apply_filters( 'working_with_toc_structured_data_aggregate_offer', $offer, $product, $schema_settings );
+
+            return is_array( $offer ) ? $offer : array();
+        }
+
+        $price = $product->get_price();
+
+        if ( '' === $price ) {
+            return array();
+        }
+
+        $offer = array(
+            '@type'         => 'Offer',
+            'price'         => $this->format_price_value( $price ),
+            'priceCurrency' => $currency,
+        );
+
+        if ( '' !== $sanitized_permalink ) {
+            $offer['url'] = $sanitized_permalink;
+        }
+
+        $stock_status = $product->get_stock_status();
+        if ( isset( $availability_map[ $stock_status ] ) ) {
+            $offer['availability'] = $availability_map[ $stock_status ];
+        }
+
+        if ( '' !== $condition ) {
+            $offer['itemCondition'] = $condition;
+        }
+
+        if ( ! empty( $shipping_details ) ) {
+            $offer['shippingDetails'] = $shipping_details;
+        }
+
+        /**
+         * Filter the offer node for simple products.
+         *
+         * @param array<string,mixed> $offer           Offer data.
+         * @param \WC_Product         $product         Product instance.
+         * @param array<string,mixed> $schema_settings Schema configuration.
+         */
+        $offer = apply_filters( 'working_with_toc_structured_data_offer', $offer, $product, $schema_settings );
+
+        return is_array( $offer ) ? $offer : array();
+    }
+
+    /**
+     * Map WooCommerce stock status codes to schema.org availability URLs.
+     *
+     * @return array<string,string>
+     */
+    protected function get_schema_availability_map(): array {
+        return array(
+            'instock'     => 'https://schema.org/InStock',
+            'outofstock'  => 'https://schema.org/OutOfStock',
+            'onbackorder' => 'https://schema.org/BackOrder',
+            'preorder'    => 'https://schema.org/PreOrder',
+        );
+    }
+
+    /**
+     * Resolve the schema.org URL representing the product condition.
+     *
+     * @param array<string,mixed> $schema_settings Schema configuration.
+     */
+    protected function resolve_product_condition_schema( array $schema_settings ): string {
+        $condition = isset( $schema_settings['condition_schema'] ) ? (string) $schema_settings['condition_schema'] : '';
+
+        /**
+         * Filter the condition URL used for structured data.
+         *
+         * @param string $condition Condition URL.
+         * @param array  $schema_settings Schema configuration.
+         */
+        $condition = apply_filters( 'working_with_toc_structured_data_condition', $condition, $schema_settings );
+
+        if ( ! is_string( $condition ) ) {
+            $condition = '';
+        }
+
+        $condition = trim( $condition );
+
+        if ( '' === $condition ) {
+            return '';
+        }
+
+        return esc_url_raw( $condition );
+    }
+
+    /**
+     * Build shipping detail nodes based on WooCommerce shipping zones.
+     *
+     * @param \WC_Product $product  Product instance.
+     * @param string       $currency Currency code.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    protected function build_shipping_details( \WC_Product $product, string $currency ): array {
+        if ( ! class_exists( '\\WC_Shipping_Zones' ) || ! class_exists( '\\WC_Shipping_Zone' ) || ! class_exists( '\\WC_Shipping_Method' ) ) {
+            return array();
+        }
+
+        $zones = \WC_Shipping_Zones::get_zones();
+        $zone_objects = array();
+
+        foreach ( $zones as $zone_data ) {
+            if ( isset( $zone_data['id'] ) ) {
+                $zone_objects[] = new \WC_Shipping_Zone( (int) $zone_data['id'] );
+            }
+        }
+
+        $zone_objects[] = new \WC_Shipping_Zone( 0 );
+
+        $decimals = $this->get_price_decimals();
+        $details  = array();
+
+        foreach ( $zone_objects as $zone ) {
+            if ( ! $zone instanceof \WC_Shipping_Zone ) {
+                continue;
+            }
+
+            $region = array(
+                '@type' => 'DefinedRegion',
+                'name'  => wp_strip_all_tags( $zone->get_zone_name() ),
+            );
+
+            $methods = $zone->get_shipping_methods( true );
+
+            foreach ( $methods as $method ) {
+                if ( ! $method instanceof \WC_Shipping_Method || ! $method->is_enabled() ) {
+                    continue;
+                }
+
+                $cost = $this->parse_numeric_price_value( $method->get_option( 'cost', '' ) );
+
+                if ( null === $cost ) {
+                    if ( 'free_shipping' === $method->id ) {
+                        $cost = 0.0;
+                    } else {
+                        continue;
+                    }
+                }
+
+                $detail = array(
+                    '@type'               => 'OfferShippingDetails',
+                    'shippingDestination' => $region,
+                    'shippingRate'        => array(
+                        '@type'   => 'MonetaryAmount',
+                        'value'   => number_format( (float) $cost, $decimals, '.', '' ),
+                        'currency'=> $currency,
+                    ),
+                );
+
+                /**
+                 * Filter an individual shipping detail node.
+                 *
+                 * @param array<string,mixed> $detail  Shipping detail data.
+                 * @param \WC_Shipping_Method $method Shipping method instance.
+                 * @param \WC_Shipping_Zone   $zone   Shipping zone instance.
+                 * @param \WC_Product         $product Product instance.
+                 */
+                $detail = apply_filters( 'working_with_toc_structured_data_shipping_detail', $detail, $method, $zone, $product );
+
+                if ( is_array( $detail ) ) {
+                    $details[] = $detail;
+                }
+            }
+        }
+
+        /**
+         * Filter the compiled list of shipping detail nodes.
+         *
+         * @param array<int,array<string,mixed>> $details Shipping details.
+         * @param \WC_Product                    $product Product instance.
+         * @param string                          $currency Currency code.
+         */
+        $details = apply_filters( 'working_with_toc_structured_data_shipping_details', $details, $product, $currency );
+
+        return is_array( $details ) ? $details : array();
+    }
+
+    /**
+     * Parse a numeric price value from a raw option.
+     *
+     * @param mixed $value Raw value.
+     */
+    protected function parse_numeric_price_value( $value ): ?float {
+        if ( is_numeric( $value ) ) {
+            return (float) $value;
+        }
+
+        if ( ! is_string( $value ) ) {
+            return null;
+        }
+
+        $normalized = preg_replace( '/[^0-9\.,-]/', '', $value );
+
+        if ( '' === $normalized ) {
+            return null;
+        }
+
+        $normalized = str_replace( ',', '.', $normalized );
+
+        return is_numeric( $normalized ) ? (float) $normalized : null;
+    }
+
+    /**
+     * Build schema nodes representing product variations.
+     *
+     * @param \WC_Product $product          Parent product.
+     * @param string       $permalink        Product permalink.
+     * @param string       $product_id       Product node identifier.
+     * @param array        $schema_settings  Schema configuration.
+     * @param array        $shipping_details Shipping details shared with the parent product.
+     *
+     * @return array{references:array<int,array<string,string>>,nodes:array<int,array<string,mixed>>}
+     */
+    protected function build_product_variations( \WC_Product $product, string $permalink, string $product_id, array $schema_settings, array $shipping_details ): array {
+        if ( ! $product->is_type( 'variable' ) ) {
+            return array(
+                'references' => array(),
+                'nodes'      => array(),
+            );
+        }
+
+        $children = method_exists( $product, 'get_children' ) ? $product->get_children() : array();
+
+        if ( empty( $children ) ) {
+            return array(
+                'references' => array(),
+                'nodes'      => array(),
+            );
+        }
+
+        $currency         = $this->get_product_currency();
+        $availability_map = $this->get_schema_availability_map();
+        $condition        = $this->resolve_product_condition_schema( $schema_settings );
+
+        $references = array();
+        $nodes      = array();
+
+        foreach ( $children as $child_id ) {
+            $variation = wc_get_product( $child_id );
+
+            if ( ! $variation instanceof \WC_Product_Variation ) {
+                continue;
+            }
+
+            $variation_id = $permalink . '#product-variation-' . $variation->get_id();
+
+            $node = array(
+                '@type'       => array( 'Product', 'ProductVariation' ),
+                '@id'         => $variation_id,
+                'isVariantOf' => array( '@id' => $product_id ),
+            );
+
+            $name = wp_strip_all_tags( $variation->get_name() );
+            if ( '' !== $name ) {
+                $node['name'] = $name;
+            }
+
+            $sku = $this->resolve_product_sku( $variation, $schema_settings );
+            if ( '' !== $sku ) {
+                $node['sku'] = $sku;
+            }
+
+            $mpn = $this->resolve_product_mpn( $variation, $schema_settings, $sku );
+            if ( '' !== $mpn ) {
+                $node['mpn'] = $mpn;
+            }
+
+            $gtins = $this->resolve_product_gtin_values( $variation );
+            foreach ( $gtins as $gtin_key => $gtin_value ) {
+                $node[ $gtin_key ] = $gtin_value;
+            }
+
+            $attributes = method_exists( $variation, 'get_attributes' ) ? $variation->get_attributes() : array();
+            $properties = array();
+
+            foreach ( $attributes as $attribute_key => $attribute_value ) {
+                if ( '' === $attribute_value ) {
+                    continue;
+                }
+
+                $label = function_exists( 'wc_attribute_label' ) ? wc_attribute_label( $attribute_key ) : $attribute_key;
+                $properties[] = array(
+                    '@type' => 'PropertyValue',
+                    'name'  => wp_strip_all_tags( $label ),
+                    'value' => wp_strip_all_tags( $attribute_value ),
+                );
+            }
+
+            if ( ! empty( $properties ) ) {
+                $node['additionalProperty'] = $properties;
+            }
+
+            $price = $variation->get_price();
+            if ( '' !== $price ) {
+                $offer = array(
+                    '@type'         => 'Offer',
+                    'price'         => $this->format_price_value( $price ),
+                    'priceCurrency' => $currency,
+                    'url'           => $this->settings->sanitize_url( $variation->get_permalink(), '' ),
+                );
+
+                $stock_status = $variation->get_stock_status();
+                if ( isset( $availability_map[ $stock_status ] ) ) {
+                    $offer['availability'] = $availability_map[ $stock_status ];
+                }
+
+                if ( '' !== $condition ) {
+                    $offer['itemCondition'] = $condition;
+                }
+
+                if ( ! empty( $shipping_details ) ) {
+                    $offer['shippingDetails'] = $shipping_details;
+                }
+
+                $node['offers'] = $offer;
+            }
+
+            $image_id = $variation->get_image_id();
+            if ( $image_id ) {
+                $image_url = wp_get_attachment_image_url( $image_id, 'full' );
+                if ( $image_url ) {
+                    $node['image'] = $this->settings->sanitize_url( $image_url, '' );
+                }
+            }
+
+            $references[] = array( '@id' => $variation_id );
+            $nodes[]      = $node;
+        }
+
+        return array(
+            'references' => $references,
+            'nodes'      => $nodes,
+        );
+    }
+
+    /**
+     * Normalise a price value for schema output.
+     *
+     * @param mixed $price Price value to format.
+     */
+    protected function format_price_value( $price ): string {
+        if ( ! is_numeric( $price ) ) {
+            return '';
+        }
+
+        return number_format( (float) $price, $this->get_price_decimals(), '.', '' );
+    }
+
+    /**
+     * Strip non-numeric characters from a GTIN value.
+     */
+    protected function sanitize_gtin_value( string $value ): string {
+        $digits = preg_replace( '/[^0-9]/', '', $value );
+
+        if ( ! is_string( $digits ) ) {
+            return '';
+        }
+
+        $digits = substr( $digits, 0, 14 );
+
+        return $digits;
+    }
+
+    /**
+     * Retrieve a condensed set of product pricing data for reuse in Open Graph tags.
+     *
+     * @param \WC_Product $product Product instance.
+     *
+     * @return array{price:string,currency:string,availability:string,condition:string}
+     */
+    public function get_product_pricing_snapshot( \WC_Product $product ): array {
+        $schema_settings = $this->settings->get_product_structured_data_settings();
+        $currency        = $this->get_product_currency();
+        $availability    = '';
+
+        $availability_map = $this->get_schema_availability_map();
+        $stock_status     = $product->get_stock_status();
+        if ( isset( $availability_map[ $stock_status ] ) ) {
+            $availability = $availability_map[ $stock_status ];
+        }
+
+        $price = '';
+
+        if ( $product->is_type( 'variable' ) && method_exists( $product, 'get_variation_price' ) ) {
+            $price = $product->get_variation_price( 'min', true );
+
+            if ( '' === $price ) {
+                $price = $product->get_variation_price( 'max', true );
+            }
+        } else {
+            $price = $product->get_price();
+        }
+
+        $formatted_price = $this->format_price_value( $price );
+
+        return array(
+            'price'       => $formatted_price,
+            'currency'    => $currency,
+            'availability'=> $availability,
+            'condition'   => $this->resolve_product_condition_schema( $schema_settings ),
+        );
+    }
+
+    /**
+     * Return the resolved product brand label for reuse outside structured data.
+     *
+     * @param \WC_Product $product Product instance.
+     */
+    public function get_product_brand_name( \WC_Product $product ): string {
+        $schema_settings = $this->settings->get_product_structured_data_settings();
+        $brand_data      = $this->resolve_product_brand_data( $product, $schema_settings );
+
+        return isset( $brand_data['name'] ) ? (string) $brand_data['name'] : '';
     }
 
     /**

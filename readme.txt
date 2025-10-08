@@ -23,6 +23,7 @@ It stores its configuration using standard WordPress options and post meta, with
 * Automatic heading anchor generation (`<h2>`–`<h6>`) that keeps TOC links synchronized with on-page headings.
 * Admin page with toggles to enable the TOC and Schema.org `ItemList` data by post type.
 * JSON-LD output compatible with Rank Math and Yoast SEO schema graphs, avoiding duplicate markup.
+* Comprehensive WooCommerce product metadata covering GTIN/MPN identifiers, reviews, shipping costs, and Open Graph fallbacks.
 * Conditional logging that respects the `WP_DEBUG` flag for safe troubleshooting in development environments.
 
 = Admin Permissions =

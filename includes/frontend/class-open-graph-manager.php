@@ -190,6 +190,13 @@ class Open_Graph_Manager {
             'og:url'         => $this->get_current_url(),
             'og:site_name'   => $site_name,
             'og:image'       => '',
+            'og:image:width' => '',
+            'og:image:height'=> '',
+            'product:price:amount'   => '',
+            'product:price:currency' => '',
+            'product:availability'   => '',
+            'product:condition'      => '',
+            'product:brand'          => '',
         );
 
         if ( is_singular() ) {
@@ -202,6 +209,37 @@ class Open_Graph_Manager {
                 $data['og:description'] = $this->normalise_content( $values['description'] ?? '' );
                 $data['og:image']       = $this->normalise_url( $values['image'] ?? '' );
                 $data['og:type']        = $this->get_open_graph_type_for_post( $post );
+
+                if ( 'product' === $post->post_type && function_exists( 'wc_get_product' ) ) {
+                    $product = wc_get_product( $post->ID );
+
+                    if ( $product instanceof \WC_Product ) {
+                        $pricing = $this->structured_data->get_product_pricing_snapshot( $product );
+
+                        if ( ! empty( $pricing['price'] ) ) {
+                            $data['product:price:amount'] = $pricing['price'];
+                        }
+
+                        if ( ! empty( $pricing['currency'] ) ) {
+                            $data['product:price:currency'] = $pricing['currency'];
+                        }
+
+                        if ( ! empty( $pricing['availability'] ) ) {
+                            $data['product:availability'] = $this->map_availability_to_open_graph( $pricing['availability'] );
+                        }
+
+                        $product_settings = $this->settings->get_product_structured_data_settings();
+
+                        if ( ! empty( $product_settings['condition_open_graph'] ) ) {
+                            $data['product:condition'] = sanitize_key( $product_settings['condition_open_graph'] );
+                        }
+
+                        $brand_name = $this->structured_data->get_product_brand_name( $product );
+                        if ( '' !== $brand_name ) {
+                            $data['product:brand'] = $this->normalise_content( $brand_name );
+                        }
+                    }
+                }
 
                 $permalink = get_permalink( $post );
                 if ( is_string( $permalink ) && '' !== $permalink ) {
@@ -223,6 +261,16 @@ class Open_Graph_Manager {
 
         if ( '' === $data['og:image'] ) {
             $data['og:image'] = $this->normalise_url( $this->settings->get_default_schema_image_url() );
+        }
+
+        if ( '' !== $data['og:image'] ) {
+            $dimensions = $this->get_image_dimensions( $data['og:image'] );
+            if ( ! empty( $dimensions['width'] ) ) {
+                $data['og:image:width'] = (string) $dimensions['width'];
+            }
+            if ( ! empty( $dimensions['height'] ) ) {
+                $data['og:image:height'] = (string) $dimensions['height'];
+            }
         }
 
         /**
@@ -250,6 +298,87 @@ class Open_Graph_Manager {
             default:
                 return apply_filters( 'working_with_toc_open_graph_type', 'article', $post );
         }
+    }
+
+    /**
+     * Map schema.org availability URLs to Open Graph availability tokens.
+     *
+     * @param string $availability Schema availability URL.
+     */
+    protected function map_availability_to_open_graph( string $availability ): string {
+        $map = array(
+            'https://schema.org/InStock'     => 'instock',
+            'https://schema.org/OutOfStock'  => 'oos',
+            'https://schema.org/BackOrder'   => 'pending',
+            'https://schema.org/PreOrder'    => 'preorder',
+        );
+
+        if ( isset( $map[ $availability ] ) ) {
+            return $map[ $availability ];
+        }
+
+        /**
+         * Filter the Open Graph availability value.
+         *
+         * @param string $fallback    Fallback value.
+         * @param string $availability Schema availability URL.
+         */
+        $filtered = apply_filters( 'working_with_toc_open_graph_availability', '', $availability );
+
+        if ( is_string( $filtered ) && '' !== $filtered ) {
+            return $filtered;
+        }
+
+        return '';
+    }
+
+    /**
+     * Attempt to retrieve image dimensions for the provided URL.
+     *
+     * @param string $url Image URL.
+     *
+     * @return array{width?:int,height?:int}
+     */
+    protected function get_image_dimensions( string $url ): array {
+        $attachment_id = 0;
+
+        if ( function_exists( 'attachment_url_to_postid' ) ) {
+            $attachment_id = attachment_url_to_postid( $url );
+        }
+
+        if ( $attachment_id ) {
+            $metadata = wp_get_attachment_metadata( $attachment_id );
+
+            if ( is_array( $metadata ) ) {
+                $width  = isset( $metadata['width'] ) ? (int) $metadata['width'] : 0;
+                $height = isset( $metadata['height'] ) ? (int) $metadata['height'] : 0;
+
+                $dimensions = array();
+
+                if ( $width > 0 ) {
+                    $dimensions['width'] = $width;
+                }
+
+                if ( $height > 0 ) {
+                    $dimensions['height'] = $height;
+                }
+
+                if ( ! empty( $dimensions ) ) {
+                    return $dimensions;
+                }
+            }
+        }
+
+        $image_size = @getimagesize( $url ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+
+        if ( false === $image_size ) {
+            return array();
+        }
+
+        return array(
+            'width'  => isset( $image_size[0] ) ? (int) $image_size[0] : 0,
+            'height' => isset( $image_size[1] ) ? (int) $image_size[1] : 0,
+        );
     }
 
     /**
