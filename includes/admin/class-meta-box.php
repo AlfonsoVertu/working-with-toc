@@ -406,18 +406,95 @@ class Meta_Box {
      * @return array<int,array{title:string,id:string,level:int,faq_excerpt?:string,faq_answer?:string}>
      */
     protected function get_headings( WP_Post $post ): array {
-        if ( '' === $post->post_content ) {
+        $segments = array();
+
+        if ( 'product' === $post->post_type ) {
+            $short_description = $this->get_product_short_description( $post );
+
+            if ( '' !== $short_description ) {
+                $segments[] = $short_description;
+            }
+        }
+
+        if ( '' !== $post->post_content ) {
+            $segments[] = $post->post_content;
+        }
+
+        if ( empty( $segments ) ) {
             return array();
         }
 
-        $parsed = Heading_Parser::parse(
-            $post->post_content,
-            array(
-                'extract_faq' => true,
-            )
-        );
+        $headings      = array();
+        $reserved_ids  = array();
 
-        return $parsed['headings'];
+        foreach ( $segments as $segment ) {
+            if ( '' === trim( wp_strip_all_tags( $segment ) ) ) {
+                continue;
+            }
+
+            $options = array(
+                'extract_faq' => true,
+            );
+
+            if ( ! empty( $reserved_ids ) ) {
+                $options['reserved_ids'] = array_keys( $reserved_ids );
+            }
+
+            $parsed = Heading_Parser::parse( $segment, $options );
+
+            if ( empty( $parsed['headings'] ) ) {
+                continue;
+            }
+
+            foreach ( $parsed['headings'] as $heading ) {
+                $headings[] = $heading;
+
+                if ( empty( $heading['id'] ) || ! is_string( $heading['id'] ) ) {
+                    continue;
+                }
+
+                $id = trim( $heading['id'] );
+
+                if ( '' === $id ) {
+                    continue;
+                }
+
+                $reserved_ids[ $id ] = true;
+            }
+        }
+
+        return $headings;
+    }
+
+    /**
+     * Retrieve the WooCommerce short description markup when available.
+     *
+     * @param WP_Post $post Post object.
+     */
+    protected function get_product_short_description( WP_Post $post ): string {
+        $excerpt = get_post_field( 'post_excerpt', $post );
+
+        if ( ! is_string( $excerpt ) ) {
+            return '';
+        }
+
+        $excerpt = trim( $excerpt );
+
+        if ( '' === $excerpt ) {
+            return '';
+        }
+
+        $description = apply_filters( 'woocommerce_short_description', $excerpt );
+
+        if ( ! is_string( $description ) ) {
+            $description = '';
+        }
+
+        if ( '' === trim( wp_strip_all_tags( $description ) ) ) {
+            $description = wpautop( $excerpt );
+        }
+
+        return $description;
     }
 
     /**
