@@ -260,6 +260,61 @@
     color: #ffffff;
 }
 
+.wwt-toc-diagnostics {
+    margin-top: 2rem;
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 16px;
+    padding: 1.75rem 2rem;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.15);
+    color: #1f2937;
+}
+
+.wwt-toc-diagnostics h2 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 1.3rem;
+}
+
+.wwt-toc-diagnostics__description {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+.wwt-toc-diagnostics__table {
+    margin-top: 1.25rem;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.wwt-toc-diagnostics__product a {
+    font-weight: 600;
+    color: #1d4ed8;
+}
+
+.wwt-toc-diagnostics__product a:hover,
+.wwt-toc-diagnostics__product a:focus {
+    color: #1e3a8a;
+}
+
+.wwt-toc-diagnostics__meta {
+    display: block;
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.2rem;
+}
+
+.wwt-toc-diagnostics__missing {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: #374151;
+}
+
+.wwt-toc-diagnostics__missing li {
+    list-style: disc;
+    margin: 0.2rem 0;
+}
+
 @media (max-width: 782px) {
     .wwt-toc-footer {
         padding: 1.5rem;
