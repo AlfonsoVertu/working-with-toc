@@ -94,6 +94,8 @@ The frontend now detects AMP requests (using `is_amp_endpoint()` or `amp_is_requ
 
 > **Manual regression:** Install the official AMP plugin in *Transitional* mode, load any single post both in canonical and `?amp` views, and verify that the AMP endpoint shows the expanded TOC without enqueued JavaScript or inline `style` attributes in the TOC markup while the canonical page retains the interactive floating accordion and inline custom properties for JS-driven behavior.【F:includes/frontend/class-frontend.php†L57-L109】【F:includes/frontend/class-frontend.php†L245-L366】
 
+> **Automation tip:** Execute `php tools/amp-lint.php` to assert that the AMP stylesheet stays within Google’s constraints and that the generated markup avoids disallowed tags, inline styles, or JavaScript handlers. The script renders a sample TOC in AMP mode and fails fast if container data attributes for the CSS color tokens are missing.【F:tools/amp-lint.php†L1-L212】
+
 ## SEO Compatibility
 
 - **Rank Math** – the plugin registers itself among supported TOCs, preventing the “No TOC plugin installed” warning.
