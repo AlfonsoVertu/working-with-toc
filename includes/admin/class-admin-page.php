@@ -190,6 +190,11 @@ class Admin_Page {
                     'top'    => __( 'Top', 'working-with-toc' ),
                     'bottom' => __( 'Bottom', 'working-with-toc' ),
                 );
+                $condition_options = array(
+                    'https://schema.org/NewCondition'         => __( 'New', 'working-with-toc' ),
+                    'https://schema.org/UsedCondition'        => __( 'Used', 'working-with-toc' ),
+                    'https://schema.org/RefurbishedCondition' => __( 'Refurbished', 'working-with-toc' ),
+                );
                 ?>
                 <div class="wwt-toc-card-grid">
                     <?php foreach ( $cards as $prefix => $card ) :
@@ -205,6 +210,14 @@ class Admin_Page {
                         $description_field_id   = sprintf( 'wwt_toc_%s_schema_fallback_description', $prefix );
                         $image_field_name       = sprintf( '%s[%s_schema_fallback_image]', Settings::OPTION_NAME, $prefix );
                         $image_field_id         = sprintf( 'wwt_toc_%s_schema_fallback_image', $prefix );
+                        $brand_attribute_field_name = sprintf( '%s[products_schema_brand_attribute]', Settings::OPTION_NAME );
+                        $brand_attribute_field_id   = 'wwt_toc_products_schema_brand_attribute';
+                        $brand_fallback_field_name  = sprintf( '%s[products_schema_fallback_brand]', Settings::OPTION_NAME );
+                        $brand_fallback_field_id    = 'wwt_toc_products_schema_fallback_brand';
+                        $sku_fallback_field_name    = sprintf( '%s[products_schema_allow_id_as_sku]', Settings::OPTION_NAME );
+                        $sku_fallback_field_id      = 'wwt_toc_products_schema_allow_id_as_sku';
+                        $condition_field_name       = sprintf( '%s[products_schema_condition]', Settings::OPTION_NAME );
+                        $condition_field_id         = 'wwt_toc_products_schema_condition';
                         ?>
                         <div class="wwt-toc-card">
                             <h2><?php echo esc_html( $card['heading'] ); ?></h2>
@@ -279,6 +292,32 @@ class Admin_Page {
                                     <label for="<?php echo esc_attr( $image_field_id ); ?>"><?php esc_html_e( 'Fallback image URL', 'working-with-toc' ); ?></label>
                                     <input type="url" id="<?php echo esc_attr( $image_field_id ); ?>" name="<?php echo esc_attr( $image_field_name ); ?>" value="<?php echo esc_attr( $settings[ $prefix . '_schema_fallback_image' ] ); ?>" class="widefat" />
                                 </div>
+                                <?php if ( 'products' === $prefix ) : ?>
+                                    <div class="wwt-toc-structured-data__field">
+                                        <label for="<?php echo esc_attr( $brand_attribute_field_id ); ?>"><?php esc_html_e( 'Brand attribute slug', 'working-with-toc' ); ?></label>
+                                        <input type="text" id="<?php echo esc_attr( $brand_attribute_field_id ); ?>" name="<?php echo esc_attr( $brand_attribute_field_name ); ?>" value="<?php echo esc_attr( $settings['products_schema_brand_attribute'] ); ?>" class="widefat" />
+                                        <p class="description"><?php esc_html_e( 'Provide the product attribute slug that stores the brand (for example "pa_brand").', 'working-with-toc' ); ?></p>
+                                    </div>
+                                    <div class="wwt-toc-structured-data__field">
+                                        <label for="<?php echo esc_attr( $brand_fallback_field_id ); ?>"><?php esc_html_e( 'Fallback brand name', 'working-with-toc' ); ?></label>
+                                        <input type="text" id="<?php echo esc_attr( $brand_fallback_field_id ); ?>" name="<?php echo esc_attr( $brand_fallback_field_name ); ?>" value="<?php echo esc_attr( $settings['products_schema_fallback_brand'] ); ?>" class="widefat" />
+                                        <p class="description"><?php esc_html_e( 'Used when the attribute above is empty for a product.', 'working-with-toc' ); ?></p>
+                                    </div>
+                                    <div class="wwt-toc-structured-data__field wwt-toc-structured-data__field--checkbox">
+                                        <label for="<?php echo esc_attr( $sku_fallback_field_id ); ?>">
+                                            <input type="checkbox" id="<?php echo esc_attr( $sku_fallback_field_id ); ?>" name="<?php echo esc_attr( $sku_fallback_field_name ); ?>" value="1" <?php checked( ! empty( $settings['products_schema_allow_id_as_sku'] ) ); ?> />
+                                            <?php esc_html_e( 'Use the product ID when the SKU is missing', 'working-with-toc' ); ?>
+                                        </label>
+                                    </div>
+                                    <div class="wwt-toc-structured-data__field">
+                                        <label for="<?php echo esc_attr( $condition_field_id ); ?>"><?php esc_html_e( 'Default product condition', 'working-with-toc' ); ?></label>
+                                        <select id="<?php echo esc_attr( $condition_field_id ); ?>" name="<?php echo esc_attr( $condition_field_name ); ?>">
+                                            <?php foreach ( $condition_options as $value => $label ) : ?>
+                                                <option value="<?php echo esc_attr( $value ); ?>" <?php selected( $settings['products_schema_condition'], $value ); ?>><?php echo esc_html( $label ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

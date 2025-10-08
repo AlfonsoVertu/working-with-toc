@@ -24,6 +24,7 @@ All settings are stored using core WordPress options and post meta, avoiding cus
 - Automatic anchor ID generation for `<h2>-<h6>` headings with links kept in sync across the TOC.
 - Custom admin page with toggles to enable the TOC and structured data for posts, pages, and WooCommerce products.
 - JSON-LD `ItemList` output compatible with Rank Math and Yoast SEO schema graphs.
+- Comprehensive WooCommerce product metadata including GTIN/MPN identifiers, reviews, shipping details, and Open Graph fallbacks.
 - Conditional logging keyed off the `WP_DEBUG` flag so production sites stay clean.
 
 ## Screenshots

@@ -377,6 +377,23 @@
     width: 100%;
 }
 
+.wwt-toc-structured-data__field--checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.wwt-toc-structured-data__field--checkbox label {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.wwt-toc-structured-data__field--checkbox input {
+    width: auto;
+}
+
 .wwt-toc-style__color {
     display: flex;
     flex-direction: column;
