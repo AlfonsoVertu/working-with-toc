@@ -2389,6 +2389,37 @@ class Structured_Data_Manager {
     }
 
     /**
+     * Retrieve a condensed set of product identifiers for reuse outside structured data.
+     *
+     * @param \WC_Product $product Product instance.
+     *
+     * @return array{
+     *     sku:string,
+     *     mpn:string,
+     *     brand:string,
+     *     gtin:array<string,string>
+     * }
+     */
+    public function get_product_identifier_snapshot( \WC_Product $product ): array {
+        $schema_settings = $this->settings->get_product_structured_data_settings();
+
+        $sku = $this->resolve_product_sku( $product, $schema_settings );
+        $mpn = $this->resolve_product_mpn( $product, $schema_settings, $sku );
+
+        $brand_data = $this->resolve_product_brand_data( $product, $schema_settings );
+        $brand_name = isset( $brand_data['name'] ) ? (string) $brand_data['name'] : '';
+
+        $gtins = $this->resolve_product_gtin_values( $product );
+
+        return array(
+            'sku'   => $sku,
+            'mpn'   => $mpn,
+            'brand' => $brand_name,
+            'gtin'  => is_array( $gtins ) ? $gtins : array(),
+        );
+    }
+
+    /**
      * Return the resolved product brand label for reuse outside structured data.
      *
      * @param \WC_Product $product Product instance.

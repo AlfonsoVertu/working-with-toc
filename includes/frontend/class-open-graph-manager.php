@@ -192,11 +192,22 @@ class Open_Graph_Manager {
             'og:image'       => '',
             'og:image:width' => '',
             'og:image:height'=> '',
+            'product:sku'              => '',
+            'product:retailer_item_id' => '',
             'product:price:amount'   => '',
             'product:price:currency' => '',
             'product:availability'   => '',
             'product:condition'      => '',
             'product:brand'          => '',
+            'product:mpn'            => '',
+            'product:gtin'           => '',
+            'product:gtin8'          => '',
+            'product:gtin12'         => '',
+            'product:gtin13'         => '',
+            'product:gtin14'         => '',
+            'product:ean'            => '',
+            'product:upc'            => '',
+            'product:item_group_id'  => '',
         );
 
         if ( is_singular() ) {
@@ -215,6 +226,7 @@ class Open_Graph_Manager {
 
                     if ( $product instanceof \WC_Product ) {
                         $pricing = $this->structured_data->get_product_pricing_snapshot( $product );
+                        $identifiers = $this->structured_data->get_product_identifier_snapshot( $product );
 
                         if ( ! empty( $pricing['price'] ) ) {
                             $data['product:price:amount'] = $pricing['price'];
@@ -232,11 +244,65 @@ class Open_Graph_Manager {
 
                         if ( ! empty( $product_settings['condition_open_graph'] ) ) {
                             $data['product:condition'] = sanitize_key( $product_settings['condition_open_graph'] );
+                        } elseif ( ! empty( $pricing['condition'] ) ) {
+                            $data['product:condition'] = sanitize_key( $this->map_condition_url_to_slug( $pricing['condition'] ) );
                         }
 
-                        $brand_name = $this->structured_data->get_product_brand_name( $product );
+                        $sku = $this->normalise_content( $identifiers['sku'] ?? '' );
+                        if ( '' !== $sku ) {
+                            $data['product:sku']              = $sku;
+                            $data['product:retailer_item_id'] = $sku;
+                        }
+
+                        $mpn = $this->normalise_content( $identifiers['mpn'] ?? '' );
+                        if ( '' !== $mpn ) {
+                            $data['product:mpn'] = $mpn;
+                        }
+
+                        $brand_name = $this->normalise_content( $identifiers['brand'] ?? '' );
                         if ( '' !== $brand_name ) {
-                            $data['product:brand'] = $this->normalise_content( $brand_name );
+                            $data['product:brand'] = $brand_name;
+                        }
+
+                        $gtins = isset( $identifiers['gtin'] ) && is_array( $identifiers['gtin'] ) ? $identifiers['gtin'] : array();
+                        foreach ( $gtins as $gtin_key => $gtin_value ) {
+                            $normalized_value = $this->normalise_numeric_identifier( $gtin_value );
+
+                            if ( '' === $normalized_value ) {
+                                continue;
+                            }
+
+                            $property = 'product:' . strtolower( $gtin_key );
+
+                            if ( isset( $data[ $property ] ) ) {
+                                $data[ $property ] = $normalized_value;
+                            }
+
+                            if ( 'gtin12' === strtolower( $gtin_key ) ) {
+                                $data['product:upc'] = $normalized_value;
+                            }
+
+                            if ( 'gtin13' === strtolower( $gtin_key ) ) {
+                                $data['product:ean'] = $normalized_value;
+                            }
+                        }
+
+                        if ( '' === $data['product:retailer_item_id'] ) {
+                            $data['product:retailer_item_id'] = (string) $product->get_id();
+                        }
+
+                        if ( '' === $data['product:item_group_id'] ) {
+                            if ( $product->is_type( 'variation' ) ) {
+                                $group_id = (string) $product->get_parent_id();
+                            } elseif ( $product->is_type( 'variable' ) ) {
+                                $group_id = (string) $product->get_id();
+                            } else {
+                                $group_id = '';
+                            }
+
+                            if ( '' !== $group_id ) {
+                                $data['product:item_group_id'] = $group_id;
+                            }
                         }
                     }
                 }
@@ -281,6 +347,29 @@ class Open_Graph_Manager {
         $data = apply_filters( 'working_with_toc_open_graph_data', $data );
 
         return $data;
+    }
+
+    /**
+     * Map a schema.org condition URL to the Open Graph slug.
+     *
+     * @param string $condition_url Condition URL.
+     */
+    protected function map_condition_url_to_slug( string $condition_url ): string {
+        $condition_url = strtolower( trim( $condition_url ) );
+
+        if ( '' === $condition_url ) {
+            return 'new';
+        }
+
+        if ( false !== strpos( $condition_url, 'refurb' ) ) {
+            return 'refurbished';
+        }
+
+        if ( false !== strpos( $condition_url, 'used' ) ) {
+            return 'used';
+        }
+
+        return 'new';
     }
 
     /**
@@ -399,6 +488,29 @@ class Open_Graph_Manager {
         }
 
         return wp_html_excerpt( $content, 300, '' );
+    }
+
+    /**
+     * Normalise an identifier that should only contain numeric characters.
+     *
+     * @param mixed $identifier Identifier value.
+     */
+    protected function normalise_numeric_identifier( $identifier ): string {
+        if ( is_numeric( $identifier ) ) {
+            $identifier = (string) $identifier;
+        } elseif ( ! is_string( $identifier ) ) {
+            return '';
+        }
+
+        $identifier = trim( $identifier );
+
+        if ( '' === $identifier ) {
+            return '';
+        }
+
+        $digits = preg_replace( '/[^0-9]/', '', $identifier );
+
+        return is_string( $digits ) ? $digits : '';
     }
 
     /**
