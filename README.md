@@ -107,6 +107,12 @@ The frontend now detects AMP requests (using `is_amp_endpoint()` or `amp_is_requ
 
 When a third-party SEO plugin omits key schema nodes, the TOC integration replays a complete fallback graph that mirrors the data the plugin would have emitted on its own. The manager compares the current graph with the fallback and only injects the missing types—Organization, WebSite, WebPage, Article, Product, BreadcrumbList, ItemList, FAQPage, ImageObject, and VideoObject—leaving any nodes that are already present untouched.【F:includes/structured-data/class-structured-data-manager.php†L430-L514】【F:includes/structured-data/class-structured-data-manager.php†L594-L652】 The fallback graph itself is composed from WordPress settings and content metadata (site title, organization details, post author, publish dates, WooCommerce price data, extracted FAQ blocks, featured images, and embedded media), so the recovered nodes stay in sync with the actual page content.【F:includes/structured-data/class-structured-data-manager.php†L1036-L1292】 This guarantees that every schema type managed by the plugin is available to crawlers even when the host SEO stack omits it.
 
+### WooCommerce product coverage
+
+The product builder now normalises shipping destinations with explicit `DefinedRegion` metadata (countries, regions, and postal codes) and formats all offer prices using WooCommerce’s display helpers. This keeps JSON-LD `Offer` nodes and Open Graph price tags aligned with storefront tax settings while ensuring `OfferShippingDetails` exposes the exact regions covered by each zone.【F:includes/structured-data/class-structured-data-manager.php†L1889-L1996】【F:includes/structured-data/class-structured-data-manager.php†L2001-L2075】【F:includes/structured-data/class-structured-data-manager.php†L2223-L2262】【F:includes/structured-data/class-structured-data-manager.php†L2339-L2410】
+
+In the admin, a diagnostics panel highlights the most recent WooCommerce products that are missing critical fields (SKU, price, stock status, brand, or global identifiers). Store managers can jump straight to the product edit screen to fix the gaps before they affect schema output.【F:includes/admin/class-admin-page.php†L303-L427】【F:assets/css/admin.css†L73-L132】
+
 ## Logging and Debugging
 
 Core operations (initialization, saving settings, rendering schema) are routed to `error_log` when `WP_DEBUG` is `true`, delivering actionable context without polluting production.

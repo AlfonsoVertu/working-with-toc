@@ -1907,14 +1907,15 @@ class Structured_Data_Manager {
         }
 
         $price = $product->get_price();
+        $formatted_price = $this->format_product_price_value( $product, $price );
 
-        if ( '' === $price ) {
+        if ( '' === $formatted_price ) {
             return array();
         }
 
         $offer = array(
             '@type'         => 'Offer',
-            'price'         => $this->format_price_value( $price ),
+            'price'         => $formatted_price,
             'priceCurrency' => $currency,
         );
 
@@ -2022,10 +2023,56 @@ class Structured_Data_Manager {
                 continue;
             }
 
-            $region = array(
+            $region_name = wp_strip_all_tags( $zone->get_zone_name() );
+            $region      = array(
                 '@type' => 'DefinedRegion',
-                'name'  => wp_strip_all_tags( $zone->get_zone_name() ),
             );
+
+            if ( '' !== $region_name ) {
+                $region['name'] = $region_name;
+            }
+
+            $countries  = array();
+            $states     = array();
+            $postcodes  = array();
+            $continents = array();
+
+            $locations = $zone->get_zone_locations();
+            foreach ( $locations as $location ) {
+                if ( ! is_object( $location ) || empty( $location->code ) ) {
+                    continue;
+                }
+
+                $code = strtoupper( (string) $location->code );
+
+                switch ( $location->type ?? '' ) {
+                    case 'country':
+                        $countries[] = $code;
+                        break;
+                    case 'state':
+                        $states[] = str_replace( ':', '-', $code );
+                        break;
+                    case 'postcode':
+                        $postcodes[] = $code;
+                        break;
+                    case 'continent':
+                        $continents[] = $code;
+                        break;
+                }
+            }
+
+            if ( ! empty( $countries ) ) {
+                $region['addressCountry'] = array_values( array_unique( $countries ) );
+            }
+
+            $region_states = array_unique( array_merge( $states, $continents ) );
+            if ( ! empty( $region_states ) ) {
+                $region['addressRegion'] = array_values( $region_states );
+            }
+
+            if ( ! empty( $postcodes ) ) {
+                $region['postalCode'] = array_values( array_unique( $postcodes ) );
+            }
 
             $methods = $zone->get_shipping_methods( true );
 
@@ -2197,11 +2244,13 @@ class Structured_Data_Manager {
                 $node['additionalProperty'] = $properties;
             }
 
-            $price = $variation->get_price();
-            if ( '' !== $price ) {
+            $price            = $variation->get_price();
+            $formatted_price = $this->format_product_price_value( $variation, $price );
+
+            if ( '' !== $formatted_price ) {
                 $offer = array(
                     '@type'         => 'Offer',
-                    'price'         => $this->format_price_value( $price ),
+                    'price'         => $formatted_price,
                     'priceCurrency' => $currency,
                     'url'           => $this->settings->sanitize_url( $variation->get_permalink(), '' ),
                 );
@@ -2254,6 +2303,35 @@ class Structured_Data_Manager {
     }
 
     /**
+     * Format a product price value, converting it to the catalog display price when possible.
+     *
+     * @param \WC_Product $product         Product instance.
+     * @param mixed        $price           Raw price value.
+     * @param bool         $already_display Whether the provided value is already formatted for display.
+     */
+    protected function format_product_price_value( \WC_Product $product, $price, bool $already_display = false ): string {
+        if ( '' === $price ) {
+            return '';
+        }
+
+        if ( ! is_numeric( $price ) ) {
+            $price = $this->parse_numeric_price_value( $price );
+        }
+
+        if ( null === $price ) {
+            return '';
+        }
+
+        $numeric_price = (float) $price;
+
+        if ( ! $already_display && function_exists( 'wc_get_price_to_display' ) ) {
+            $numeric_price = wc_get_price_to_display( $product, array( 'price' => $numeric_price ) );
+        }
+
+        return $this->format_price_value( $numeric_price );
+    }
+
+    /**
      * Strip non-numeric characters from a GTIN value.
      */
     protected function sanitize_gtin_value( string $value ): string {
@@ -2294,11 +2372,13 @@ class Structured_Data_Manager {
             if ( '' === $price ) {
                 $price = $product->get_variation_price( 'max', true );
             }
+
+            $formatted_price = $this->format_product_price_value( $product, $price, true );
         } else {
             $price = $product->get_price();
-        }
 
-        $formatted_price = $this->format_price_value( $price );
+            $formatted_price = $this->format_product_price_value( $product, $price );
+        }
 
         return array(
             'price'       => $formatted_price,

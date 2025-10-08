@@ -346,6 +346,7 @@ class Admin_Page {
                     <?php submit_button( __( 'Save settings', 'working-with-toc' ) ); ?>
                 </div>
             </form>
+            <?php $this->render_product_diagnostics(); ?>
             <footer class="wwt-toc-footer">
                 <div class="wwt-toc-footer__branding">
                     <img class="wwt-toc-footer__logo" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Working with Web logo', 'working-with-toc' ); ?>" />
@@ -381,5 +382,244 @@ class Admin_Page {
             </footer>
         </div>
         <?php
+    }
+
+    /**
+     * Display a diagnostic table highlighting products missing key metadata.
+     */
+    protected function render_product_diagnostics(): void {
+        if ( ! class_exists( '\\WooCommerce' ) || ! function_exists( 'wc_get_products' ) ) {
+            return;
+        }
+
+        $issues = $this->collect_product_metadata_gaps();
+
+        if ( empty( $issues ) ) {
+            echo '<section class="wwt-toc-diagnostics"><h2>' . esc_html__( 'Product metadata diagnostics', 'working-with-toc' ) . '</h2>';
+            echo '<p class="wwt-toc-diagnostics__description">' . esc_html__( 'All recently modified products include the metadata required for structured data and Open Graph output.', 'working-with-toc' ) . '</p>';
+            echo '</section>';
+
+            return;
+        }
+
+        ?>
+        <section class="wwt-toc-diagnostics">
+            <h2><?php esc_html_e( 'Product metadata diagnostics', 'working-with-toc' ); ?></h2>
+            <p class="wwt-toc-diagnostics__description"><?php esc_html_e( 'The products below are missing critical values used by the structured data and Open Graph generators.', 'working-with-toc' ); ?></p>
+            <table class="widefat striped wwt-toc-diagnostics__table">
+                <thead>
+                    <tr>
+                        <th scope="col"><?php esc_html_e( 'Product', 'working-with-toc' ); ?></th>
+                        <th scope="col"><?php esc_html_e( 'Missing fields', 'working-with-toc' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $issues as $issue ) :
+                        $product   = $issue['product'];
+                        $missing   = $issue['missing'];
+                        $edit_link = get_edit_post_link( $product->get_id() );
+                        ?>
+                        <tr>
+                            <td>
+                                <span class="wwt-toc-diagnostics__product">
+                                    <?php if ( $edit_link ) : ?>
+                                        <a href="<?php echo esc_url( $edit_link ); ?>">
+                                            <?php echo esc_html( $product->get_name() ); ?>
+                                        </a>
+                                    <?php else : ?>
+                                        <?php echo esc_html( $product->get_name() ); ?>
+                                    <?php endif; ?>
+                                </span>
+                                <span class="wwt-toc-diagnostics__meta">#<?php echo esc_html( (string) $product->get_id() ); ?></span>
+                            </td>
+                            <td>
+                                <ul class="wwt-toc-diagnostics__missing">
+                                    <?php foreach ( $missing as $label ) : ?>
+                                        <li><?php echo esc_html( $label ); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </section>
+        <?php
+    }
+
+    /**
+     * Compile a list of products missing key metadata fields.
+     *
+     * @return array<int,array{product:\WC_Product,missing:array<int,string>}>
+     */
+    protected function collect_product_metadata_gaps(): array {
+        $issues = array();
+
+        $schema_settings = $this->settings->get_product_structured_data_settings();
+
+        $products = wc_get_products(
+            array(
+                'limit'   => 25,
+                'orderby' => 'modified',
+                'order'   => 'DESC',
+                'status'  => array( 'publish', 'private' ),
+            )
+        );
+
+        foreach ( $products as $product ) {
+            if ( ! $product instanceof \WC_Product ) {
+                continue;
+            }
+
+            $missing = array();
+
+            $sku = $product->get_sku();
+            if ( '' === $sku ) {
+                if ( empty( $schema_settings['allow_id_as_sku'] ) ) {
+                    $missing[] = __( 'SKU', 'working-with-toc' );
+                } else {
+                    $missing[] = __( 'SKU (using product ID fallback)', 'working-with-toc' );
+                }
+            }
+
+            if ( ! $this->diagnostic_product_has_price( $product ) ) {
+                $missing[] = __( 'Price', 'working-with-toc' );
+            }
+
+            $stock_status = $product->get_stock_status();
+            $allowed      = array( 'instock', 'outofstock', 'onbackorder', 'preorder' );
+            if ( '' === $stock_status || ! in_array( $stock_status, $allowed, true ) ) {
+                $missing[] = __( 'Stock status', 'working-with-toc' );
+            }
+
+            if ( '' === $this->diagnostic_product_brand_label( $product, $schema_settings ) ) {
+                $missing[] = __( 'Brand', 'working-with-toc' );
+            }
+
+            if ( ! $this->diagnostic_product_has_global_identifier( $product ) ) {
+                $missing[] = __( 'Global identifier (GTIN/MPN)', 'working-with-toc' );
+            }
+
+            if ( empty( $missing ) ) {
+                continue;
+            }
+
+            $issues[] = array(
+                'product' => $product,
+                'missing' => $missing,
+            );
+
+            if ( count( $issues ) >= 10 ) {
+                break;
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Determine whether a product exposes a usable price.
+     */
+    protected function diagnostic_product_has_price( \WC_Product $product ): bool {
+        if ( $product->is_type( 'variable' ) && method_exists( $product, 'get_variation_price' ) ) {
+            $min_price = $product->get_variation_price( 'min', false );
+
+            if ( '' !== $min_price ) {
+                return true;
+            }
+
+            $max_price = $product->get_variation_price( 'max', false );
+
+            return '' !== $max_price;
+        }
+
+        if ( $product->is_type( 'grouped' ) ) {
+            $children = $product->get_children();
+
+            foreach ( $children as $child_id ) {
+                $child = wc_get_product( $child_id );
+
+                if ( $child instanceof \WC_Product && '' !== $child->get_price() ) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return '' !== $product->get_price();
+    }
+
+    /**
+     * Resolve the brand label for diagnostics using the configured attribute and fallback.
+     *
+     * @param \WC_Product $product         Product instance.
+     * @param array       $schema_settings Schema configuration.
+     */
+    protected function diagnostic_product_brand_label( \WC_Product $product, array $schema_settings ): string {
+        $brand_name      = '';
+        $brand_attribute = isset( $schema_settings['brand_attribute'] ) ? (string) $schema_settings['brand_attribute'] : '';
+
+        if ( '' !== $brand_attribute ) {
+            $brand_value = $product->get_attribute( $brand_attribute );
+
+            if ( is_string( $brand_value ) && '' !== trim( $brand_value ) ) {
+                $brand_name = wp_strip_all_tags( $brand_value );
+            }
+        }
+
+        if ( '' === $brand_name && ! empty( $schema_settings['fallback_brand'] ) ) {
+            $brand_name = (string) $schema_settings['fallback_brand'];
+        }
+
+        $brand_name = trim( wp_strip_all_tags( $brand_name ) );
+
+        return $brand_name;
+    }
+
+    /**
+     * Determine whether a product has a global identifier (GTIN/MPN).
+     */
+    protected function diagnostic_product_has_global_identifier( \WC_Product $product ): bool {
+        $mpn = $product->get_meta( '_mpn', true );
+        if ( '' === $mpn ) {
+            $mpn = $product->get_meta( 'mpn', true );
+        }
+
+        if ( is_string( $mpn ) && '' !== trim( $mpn ) ) {
+            return true;
+        }
+
+        $meta_map = array(
+            'gtin8'  => '_gtin8',
+            'gtin12' => '_gtin12',
+            'gtin13' => '_gtin13',
+            'gtin14' => '_gtin14',
+            'gtin'   => '_gtin',
+        );
+
+        $meta_map = apply_filters( 'working_with_toc_structured_data_gtin_meta_map', $meta_map, $product );
+
+        if ( ! is_array( $meta_map ) ) {
+            $meta_map = array();
+        }
+
+        foreach ( $meta_map as $meta_key ) {
+            $value = '';
+
+            if ( is_string( $meta_key ) && '' !== $meta_key ) {
+                $value = $product->get_meta( $meta_key, true );
+            }
+
+            if ( '' === $value && is_string( $meta_key ) && taxonomy_exists( $meta_key ) ) {
+                $value = $product->get_attribute( $meta_key );
+            }
+
+            if ( is_string( $value ) && '' !== trim( $value ) ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
