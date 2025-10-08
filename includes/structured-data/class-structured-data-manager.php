@@ -244,12 +244,9 @@ class Structured_Data_Manager {
                 continue;
             }
 
-            $node_types = $node['@type'] ?? array();
-            if ( ! is_array( $node_types ) ) {
-                $node_types = array( $node_types );
-            }
+            $node_types = $this->normalize_type_list( $node['@type'] ?? array() );
 
-            if ( empty( array_intersect( $types, $node_types ) ) ) {
+            if ( ! $this->types_match_any( $node_types, $types ) ) {
                 continue;
             }
 
@@ -319,12 +316,9 @@ class Structured_Data_Manager {
                 continue;
             }
 
-            $node_types = $node['@type'] ?? array();
-            if ( ! is_array( $node_types ) ) {
-                $node_types = array( $node_types );
-            }
+            $node_types = $this->normalize_type_list( $node['@type'] ?? array() );
 
-            if ( empty( array_intersect( $types, $node_types ) ) ) {
+            if ( ! $this->types_match_any( $node_types, $types ) ) {
                 continue;
             }
 
@@ -603,7 +597,7 @@ class Structured_Data_Manager {
 
         foreach ( $map as $base_type => $equivalents ) {
             foreach ( $types as $type ) {
-                if ( in_array( $type, $equivalents, true ) ) {
+                if ( $this->is_equivalent_schema_type( $type, $base_type, $equivalents ) ) {
                     if ( ! in_array( $base_type, $manageable, true ) ) {
                         $manageable[] = $base_type;
                     }
@@ -625,23 +619,13 @@ class Structured_Data_Manager {
         $map         = $this->get_manageable_schema_type_map();
         $equivalents = $map[ $type ] ?? array( $type );
 
-        foreach ( $equivalents as $candidate ) {
-            if ( isset( $existing_types[ $candidate ] ) ) {
-                return true;
+        foreach ( $existing_types as $existing_type => $present ) {
+            if ( ! $present || ! is_string( $existing_type ) ) {
+                continue;
             }
-        }
 
-        if ( 'Article' === $type ) {
-            foreach ( $existing_types as $existing_type => $present ) {
-                if ( ! $present || ! is_string( $existing_type ) ) {
-                    continue;
-                }
-
-                $suffix_length = 7;
-
-                if ( strlen( $existing_type ) >= $suffix_length && 'Article' !== $existing_type && substr( $existing_type, -$suffix_length ) === 'Article' ) {
-                    return true;
-                }
+            if ( $this->is_equivalent_schema_type( $existing_type, $type, $equivalents ) ) {
+                return true;
             }
         }
 
@@ -655,17 +639,98 @@ class Structured_Data_Manager {
      */
     protected function get_manageable_schema_type_map(): array {
         return array(
-            'Organization'   => array( 'Organization' ),
+            'Organization'   => array( 'Organization', 'LocalBusiness', 'Corporation', 'NewsMediaOrganization', 'EducationalOrganization', 'GovernmentOrganization', 'MedicalOrganization', 'Airline', 'SportsOrganization', 'PerformingGroup', 'NGO', 'Project' ),
             'WebSite'        => array( 'WebSite' ),
-            'WebPage'        => array( 'WebPage' ),
-            'Article'        => array( 'Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'ScholarlyArticle' ),
-            'Product'        => array( 'Product' ),
+            'WebPage'        => array( 'WebPage', 'CollectionPage', 'ProfilePage', 'AboutPage', 'ContactPage', 'SearchResultsPage', 'ItemPage', 'CheckoutPage' ),
+            'Article'        => array( 'Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'ScholarlyArticle', 'Report', 'SocialMediaPosting', 'LiveBlogPosting' ),
+            'Product'        => array( 'Product', 'ProductModel', 'ProductGroup', 'IndividualProduct', 'Vehicle' ),
             'BreadcrumbList' => array( 'BreadcrumbList' ),
             'ItemList'       => array( 'ItemList' ),
-            'FAQPage'        => array( 'FAQPage' ),
-            'ImageObject'    => array( 'ImageObject' ),
-            'VideoObject'    => array( 'VideoObject' ),
+            'FAQPage'        => array( 'FAQPage', 'QAPage' ),
+            'ImageObject'    => array( 'ImageObject', 'Photograph' ),
+            'VideoObject'    => array( 'VideoObject', 'MusicVideoObject', 'Movie' ),
         );
+    }
+
+    /**
+     * Determine whether a node type matches a given base type.
+     *
+     * @param string                     $candidate   Type detected on a schema node.
+     * @param string                     $base_type   Target base type.
+     * @param array<int,string>|null     $equivalents Optional list of preconfigured equivalents.
+     */
+    protected function is_equivalent_schema_type( string $candidate, string $base_type, ?array $equivalents = null ): bool {
+        if ( '' === $candidate || '' === $base_type ) {
+            return false;
+        }
+
+        if ( null === $equivalents ) {
+            $map         = $this->get_manageable_schema_type_map();
+            $equivalents = $map[ $base_type ] ?? array( $base_type );
+        }
+
+        if ( in_array( $candidate, $equivalents, true ) ) {
+            return true;
+        }
+
+        switch ( $base_type ) {
+            case 'Article':
+                return $this->string_ends_with( $candidate, 'Article' );
+            case 'Organization':
+                return $this->string_ends_with( $candidate, 'Organization' ) || $this->string_ends_with( $candidate, 'Business' );
+            case 'WebPage':
+                return $this->string_ends_with( $candidate, 'Page' );
+            case 'Product':
+                return $this->string_ends_with( $candidate, 'Product' );
+            case 'ImageObject':
+                return $this->string_ends_with( $candidate, 'ImageObject' );
+            case 'VideoObject':
+                return $this->string_ends_with( $candidate, 'VideoObject' );
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Check whether any of the provided node types match the target base types.
+     *
+     * @param array<int,string> $node_types Types detected on a schema node.
+     * @param array<int,string> $targets    Base types to match against.
+     */
+    protected function types_match_any( array $node_types, array $targets ): bool {
+        if ( empty( $node_types ) || empty( $targets ) ) {
+            return false;
+        }
+
+        foreach ( $targets as $target ) {
+            foreach ( $node_types as $node_type ) {
+                if ( $this->is_equivalent_schema_type( $node_type, $target ) ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine whether a string ends with the provided suffix.
+     *
+     * @param string $haystack String to inspect.
+     * @param string $needle   Expected suffix.
+     */
+    protected function string_ends_with( string $haystack, string $needle ): bool {
+        if ( '' === $needle ) {
+            return true;
+        }
+
+        $needle_length = strlen( $needle );
+
+        if ( $needle_length > strlen( $haystack ) ) {
+            return false;
+        }
+
+        return substr( $haystack, -$needle_length ) === $needle;
     }
 
     /**
