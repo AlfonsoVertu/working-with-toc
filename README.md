@@ -102,6 +102,10 @@ The frontend now detects AMP requests (using `is_amp_endpoint()` or `amp_is_requ
 - **Yoast SEO** – structured data is injected into the existing schema graph through the `wpseo_schema_graph` filter without collisions.
 - **Schema.org** – an `ItemList` node is generated with links that match the heading anchors created in the markup.
 
+### Structured data fallbacks
+
+When a third-party SEO plugin omits key schema nodes, the TOC integration replays a complete fallback graph that mirrors the data the plugin would have emitted on its own. The manager compares the current graph with the fallback and only injects the missing types—Organization, WebSite, WebPage, Article, Product, BreadcrumbList, ItemList, FAQPage, ImageObject, and VideoObject—leaving any nodes that are already present untouched.【F:includes/structured-data/class-structured-data-manager.php†L430-L514】【F:includes/structured-data/class-structured-data-manager.php†L594-L652】 The fallback graph itself is composed from WordPress settings and content metadata (site title, organization details, post author, publish dates, WooCommerce price data, extracted FAQ blocks, featured images, and embedded media), so the recovered nodes stay in sync with the actual page content.【F:includes/structured-data/class-structured-data-manager.php†L1036-L1292】 This guarantees that every schema type managed by the plugin is available to crawlers even when the host SEO stack omits it.
+
 ## Logging and Debugging
 
 Core operations (initialization, saving settings, rendering schema) are routed to `error_log` when `WP_DEBUG` is `true`, delivering actionable context without polluting production.
