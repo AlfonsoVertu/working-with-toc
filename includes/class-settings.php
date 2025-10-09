@@ -69,6 +69,26 @@ class Settings {
                 'type'    => 'url',
                 'default' => $this->get_default_logo_url(),
             ),
+            'organization_address_street' => array(
+                'type'    => 'string',
+                'default' => '',
+            ),
+            'organization_address_locality' => array(
+                'type'    => 'string',
+                'default' => '',
+            ),
+            'organization_address_region' => array(
+                'type'    => 'string',
+                'default' => '',
+            ),
+            'organization_address_postal_code' => array(
+                'type'    => 'string',
+                'default' => '',
+            ),
+            'organization_address_country' => array(
+                'type'    => 'string',
+                'default' => '',
+            ),
         );
 
         $style_defaults = array(
@@ -498,9 +518,16 @@ class Settings {
         $settings = $this->get_settings();
 
         return array(
-            'name' => $settings['organization_name'] ?? get_bloginfo( 'name' ),
-            'url'  => $settings['organization_url'] ?? home_url( '/' ),
-            'logo' => $settings['organization_logo'] ?? '',
+            'name'    => $settings['organization_name'] ?? get_bloginfo( 'name' ),
+            'url'     => $settings['organization_url'] ?? home_url( '/' ),
+            'logo'    => $settings['organization_logo'] ?? '',
+            'address' => array(
+                'street'      => $settings['organization_address_street'] ?? '',
+                'locality'    => $settings['organization_address_locality'] ?? '',
+                'region'      => $settings['organization_address_region'] ?? '',
+                'postal_code' => $settings['organization_address_postal_code'] ?? '',
+                'country'     => $settings['organization_address_country'] ?? '',
+            ),
         );
     }
 

@@ -150,6 +150,7 @@ class Structured_Data_Manager {
         }
 
         $graph = $this->ensure_missing_schema_nodes( $graph, $schema, $post, 'Yoast' );
+        $graph = $this->apply_organization_address_fallback( $graph, $post, 'Yoast' );
 
         Logger::log( 'Merged TOC schema into Yoast graph for post ID ' . $post->ID );
 
@@ -228,6 +229,7 @@ class Structured_Data_Manager {
         }
 
         $data['@graph'] = $this->ensure_missing_schema_nodes( $data['@graph'], $schema, $post, 'Rank Math' );
+        $data['@graph'] = $this->apply_organization_address_fallback( $data['@graph'], $post, 'Rank Math' );
 
         Logger::log( 'Merged TOC schema into Rank Math graph for post ID ' . $post->ID );
 
@@ -518,6 +520,105 @@ class Structured_Data_Manager {
         }
 
         return $graph;
+    }
+
+    /**
+     * Ensure the Organization node exposes a PostalAddress fallback when missing.
+     *
+     * @param array<int|string,mixed> $graph   Graph nodes to inspect.
+     * @param WP_Post                 $post    Current post object.
+     * @param string                  $source  Integration source label for logging.
+     *
+     * @return array<int|string,mixed>
+     */
+    protected function apply_organization_address_fallback( array $graph, WP_Post $post, string $source ): array {
+        $organization = $this->settings->get_organization_settings();
+        $address      = $this->build_organization_address_node( $organization['address'] ?? array() );
+
+        if ( null === $address ) {
+            return $graph;
+        }
+
+        $updated = false;
+
+        foreach ( $graph as $index => $node ) {
+            if ( ! is_array( $node ) ) {
+                continue;
+            }
+
+            $types = $this->normalize_type_list( $node['@type'] ?? array() );
+
+            if ( empty( $types ) || ! in_array( 'Organization', $types, true ) ) {
+                continue;
+            }
+
+            if ( ! empty( $node['address'] ) ) {
+                continue;
+            }
+
+            $graph[ $index ]['address'] = $address;
+            $updated                    = true;
+            break;
+        }
+
+        if ( $updated ) {
+            Logger::log(
+                sprintf(
+                    'Applied organization address fallback to %s graph for post ID %d',
+                    $source,
+                    $post->ID
+                )
+            );
+        }
+
+        return $graph;
+    }
+
+    /**
+     * Build a PostalAddress node from the configured organization fallback values.
+     *
+     * @param array<string,string> $address Raw address components.
+     */
+    protected function build_organization_address_node( $address ): ?array {
+        if ( ! is_array( $address ) ) {
+            return null;
+        }
+
+        $street      = isset( $address['street'] ) ? trim( (string) $address['street'] ) : '';
+        $locality    = isset( $address['locality'] ) ? trim( (string) $address['locality'] ) : '';
+        $region      = isset( $address['region'] ) ? trim( (string) $address['region'] ) : '';
+        $postal_code = isset( $address['postal_code'] ) ? trim( (string) $address['postal_code'] ) : '';
+        $country     = isset( $address['country'] ) ? trim( (string) $address['country'] ) : '';
+
+        if ( '' === $street && '' === $locality && '' === $region && '' === $postal_code && '' === $country ) {
+            return null;
+        }
+
+        $node = array(
+            '@type' => 'PostalAddress',
+        );
+
+        if ( '' !== $street ) {
+            $node['streetAddress'] = $street;
+        }
+
+        if ( '' !== $locality ) {
+            $node['addressLocality'] = $locality;
+        }
+
+        if ( '' !== $region ) {
+            $node['addressRegion'] = $region;
+        }
+
+        if ( '' !== $postal_code ) {
+            $node['postalCode'] = $postal_code;
+        }
+
+        if ( '' !== $country ) {
+            $node['addressCountry'] = $country;
+        }
+
+        return $node;
     }
 
     /**
@@ -1073,6 +1174,12 @@ class Structured_Data_Manager {
                 '@type' => 'ImageObject',
                 'url'   => $organization['logo'],
             );
+        }
+
+        $address_node = $this->build_organization_address_node( $organization['address'] ?? array() );
+
+        if ( null !== $address_node ) {
+            $organization_node['address'] = $address_node;
         }
 
         $graph[] = $organization_node;
