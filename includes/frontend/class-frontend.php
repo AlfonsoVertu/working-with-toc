@@ -17,6 +17,7 @@ use Working_With_TOC\Heading_Parser;
 use Working_With_TOC\Settings;
 use function Working_With_TOC\is_domdocument_missing;
 use function sanitize_html_class;
+use function wp_is_mobile;
 use function wp_json_encode;
 
 /**
@@ -119,9 +120,17 @@ class Frontend {
             return;
         }
 
+        $script_handle = 'wwt-toc-frontend';
+        $script_path   = 'assets/js/frontend.js';
+
+        if ( wp_is_mobile() ) {
+            $script_handle = 'wwt-toc-frontend-mobile';
+            $script_path   = 'assets/js/frontend-mobile.js';
+        }
+
         wp_enqueue_script(
-            'wwt-toc-frontend',
-            WWT_TOC_PLUGIN_URL . 'assets/js/frontend.js',
+            $script_handle,
+            WWT_TOC_PLUGIN_URL . $script_path,
             array(),
             WWTOC_VERSION,
             true

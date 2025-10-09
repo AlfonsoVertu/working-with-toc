@@ -339,6 +339,26 @@ class Admin_Page {
                             <label for="wwt_toc_organization_logo"><?php esc_html_e( 'Logo URL', 'working-with-toc' ); ?></label>
                             <input type="url" id="wwt_toc_organization_logo" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_logo]" value="<?php echo esc_attr( $settings['organization_logo'] ); ?>" class="regular-text" />
                         </div>
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_address_street"><?php esc_html_e( 'Street address', 'working-with-toc' ); ?></label>
+                            <input type="text" id="wwt_toc_organization_address_street" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_address_street]" value="<?php echo esc_attr( $settings['organization_address_street'] ); ?>" class="regular-text" />
+                        </div>
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_address_locality"><?php esc_html_e( 'City / locality', 'working-with-toc' ); ?></label>
+                            <input type="text" id="wwt_toc_organization_address_locality" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_address_locality]" value="<?php echo esc_attr( $settings['organization_address_locality'] ); ?>" class="regular-text" />
+                        </div>
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_address_region"><?php esc_html_e( 'Region / state', 'working-with-toc' ); ?></label>
+                            <input type="text" id="wwt_toc_organization_address_region" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_address_region]" value="<?php echo esc_attr( $settings['organization_address_region'] ); ?>" class="regular-text" />
+                        </div>
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_address_postal_code"><?php esc_html_e( 'Postal code', 'working-with-toc' ); ?></label>
+                            <input type="text" id="wwt_toc_organization_address_postal_code" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_address_postal_code]" value="<?php echo esc_attr( $settings['organization_address_postal_code'] ); ?>" class="regular-text" />
+                        </div>
+                        <div class="wwt-toc-organization__field">
+                            <label for="wwt_toc_organization_address_country"><?php esc_html_e( 'Country', 'working-with-toc' ); ?></label>
+                            <input type="text" id="wwt_toc_organization_address_country" name="<?php echo esc_attr( Settings::OPTION_NAME ); ?>[organization_address_country]" value="<?php echo esc_attr( $settings['organization_address_country'] ); ?>" class="regular-text" />
+                        </div>
                     </div>
                 </section>
 
